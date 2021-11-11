@@ -1,0 +1,72 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta http-equiv="X-UA-Compatible" content="IE=edge" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title></title>
+  </head>
+  <style type="text/css">
+    .container {
+      text-align: center;
+    }
+    .content {
+      text-align: left;
+      border: 1px solid gray;
+      margin-top: 1rem;
+      border-radius: 0.3rem;
+      overflow: hidden;
+      width: 30rem;
+      margin: auto;
+      margin-top: 1rem;
+    }
+    .header {
+      padding: 1rem;
+      background-color: green;
+
+      color: white;
+    }
+    .content-body {
+      padding: 2rem;
+    }
+
+    .button {
+      background-color: #ffffff;
+      border: 1px solid rgb(209, 213, 219);
+      border-radius: 0.5rem;
+      box-sizing: border-box;
+      color: #111827;
+      font-size: 0.875rem;
+      font-weight: 600;
+      line-height: 1.25rem;
+      padding: 0.75rem 1rem;
+      text-align: center;
+      text-decoration: none #d1d5db solid;
+      text-decoration-thickness: auto;
+      box-shadow: 0 1px 2px 0 rgba(0, 0, 0, 0.05);
+      cursor: pointer;
+      user-select: none;
+      -webkit-user-select: none;
+      touch-action: manipulation;
+    }
+  </style>
+  <body>
+    <div class="container">
+      <h1>Gradeflix</h1>
+      <div class="">
+        Xin chào! <%= invitee %> đã mời bạn tham gia lớp <span style="color: green;"><%= classroomName %></span>  với tư cách <%= role
+        %>
+
+        <div class="content">
+          <div class="header">
+            <b>Lời mời tham gia lớp học</b>
+            <div><%= classroomName %></div>
+          </div>
+          <div class="content-body">
+            <a type="button" class="button" href="<%= link %>">Tham gia</a>
+          </div>
+        </div>
+      </div>
+    </div>
+  </body>
+</html>
