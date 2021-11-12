@@ -286,11 +286,25 @@ export class ClassroomController {
     body: SendInvitationRequest,
   ): Promise<void> {
     const user = await this.getCurrentUser()
+
+    const classroom = await this.classroomRepository.findById(classroomId)
+
+    const isTeacher = await this.userClassroomRepository.findOne({
+      where: {
+        userId: user.id,
+        classroomId: classroom.id,
+        userRole: ClassroomRole.TEACHER,
+      },
+    })
+    // authorize user if user is teacher or host
+    if (classroom.hostId !== user.id && !isTeacher) {
+      throw new HttpErrors.Forbidden('You are now allowed to do this.')
+    }
+
     const invitee = `${user.fullname} (${user.email})`
 
     const subject = 'Lời mời tham gia lớp học'
 
-    const classroom = await this.classroomRepository.findById(classroomId)
     const classroomName = classroom.name
     const webLink = process.env.WEB_LINK + `/inv?classroomId=${classroomId}&role=${role}`
 

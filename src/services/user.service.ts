@@ -62,4 +62,12 @@ export class MyUserService implements UserService<User, LoginReq> {
     const token = await this.jwtService.generateToken(userProfile)
     return new LoginRes({ ...user, token })
   }
+
+  async verifyToken(token: string) {
+    const userProfile = await this.jwtService.verifyToken(token)
+    if (!userProfile) {
+      throw new HttpErrors[400]('Token is invalid')
+    }
+    return userProfile
+  }
 }

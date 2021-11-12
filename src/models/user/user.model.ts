@@ -16,6 +16,7 @@ export class User extends TimeStampMixin(BaseEntity) {
 
   @property({
     type: 'string',
+    default: '',
   })
   fullname: string
 
@@ -34,16 +35,16 @@ export class User extends TimeStampMixin(BaseEntity) {
   @property({
     type: 'string',
     hidden: true,
-    postgres :{
-      nullable: 'true'
-    }
+    postgres: {
+      nullable: 'true',
+    },
   })
   password: string
 
   @hasMany(() => Classroom, {
     through: {
       model: () => UserClassroom,
-  },
+    },
   })
   classrooms: Classroom[];
 
@@ -55,6 +56,7 @@ export class User extends TimeStampMixin(BaseEntity) {
 
   constructor(data?: Partial<User>) {
     super(data)
+    if (!this.fullname) this.fullname = this.email
   }
 }
 

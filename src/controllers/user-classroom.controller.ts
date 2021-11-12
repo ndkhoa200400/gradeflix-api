@@ -64,13 +64,9 @@ export class UserClassroomController {
 
     const isHost = classroom.hostId === getUser.id
 
-    console.log(
-      '(!student || student.userId !== getUser.id)',
-      !student || student.userId !== getUser.id,
-    )
     // check if the user uses this route is not host or teacher or own this userid
     if (!isTeacher && !isHost && (!student || student.userId !== getUser.id)) {
-      throw new HttpErrors.Unauthorized('You are not allowed to do this.')
+      throw new HttpErrors.Forbidden('You are not allowed to do this.')
     }
     if (!student) throw new HttpErrors.NotFound('Student not found from this classroom')
 
