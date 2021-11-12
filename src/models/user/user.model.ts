@@ -34,13 +34,16 @@ export class User extends TimeStampMixin(BaseEntity) {
   @property({
     type: 'string',
     hidden: true,
+    postgres :{
+      nullable: 'true'
+    }
   })
   password: string
 
   @hasMany(() => Classroom, {
     through: {
       model: () => UserClassroom,
-    },
+  },
   })
   classrooms: Classroom[];
 

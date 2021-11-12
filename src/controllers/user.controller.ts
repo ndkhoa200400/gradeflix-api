@@ -16,7 +16,6 @@ import {
 import { LoginReq, LoginRes, PatchUserRequest, User, UserLoginSocialRequest } from '../models'
 import { MyUserService } from '../services'
 import { UserRepository } from '../repositories'
-import { ClassroomRole } from '../constants/classroom-role'
 
 export class UserController {
   constructor(
@@ -131,12 +130,9 @@ export class UserController {
       },
     },
   })
-  async getMe(
-    @param.filter(User, { exclude: 'where' }) filter?: FilterExcludingWhere<User>,
-  ): Promise<User> {
-    filter = filter ?? {}
+  async getMe(): Promise<User> {
     const getUser = await this.getCurrentUser()
-    return this.userRepository.findById(getUser.id, filter)
+    return this.userRepository.findById(getUser.id)
   }
 
   @authenticate('jwt')
@@ -159,6 +155,4 @@ export class UserController {
     Object.assign(user, userBody)
     await this.userRepository.save(user)
   }
-
-
 }

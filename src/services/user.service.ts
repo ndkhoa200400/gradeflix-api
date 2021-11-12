@@ -32,6 +32,7 @@ export class MyUserService implements UserService<User, LoginReq> {
       throw new HttpErrors.NotFound('User not found')
     }
     const { password = '' } = foundUser
+
     if (!password) throw new HttpErrors.Forbidden('You are not allowed to use this method')
     const passwordMatched = await this.hasher.comparePassword(credentials.password!, password)
     if (!passwordMatched) {
@@ -56,7 +57,7 @@ export class MyUserService implements UserService<User, LoginReq> {
 
   async loginSocial(userData: UserLoginSocialRequest) {
     // const password = await hash('social', await genSalt())
-    const user = await this.userRepository.create({ ...userData})
+    const user = await this.userRepository.create({ ...userData })
     const userProfile = this.convertToUserProfile(user)
     const token = await this.jwtService.generateToken(userProfile)
     return new LoginRes({ ...user, token })

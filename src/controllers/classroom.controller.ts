@@ -1,5 +1,5 @@
 import { authenticate } from '@loopback/authentication'
-import { User, UserServiceBindings } from '@loopback/authentication-jwt'
+import { UserServiceBindings } from '@loopback/authentication-jwt'
 import { Getter, inject } from '@loopback/core'
 import {
   Count,
@@ -101,11 +101,11 @@ export class ClassroomController {
     const currentUser = await this.getCurrentUser()
     const user = await this.userRepository.findById(currentUser.id)
 
-    filter.where = { ...filter.where, hostId: user.id }
     const userClassrooms = await this.userClassroomRepository.find({
       where: { userId: user.id },
-      include: ['classroom', 'user'],
+      include: [{ relation: 'classroom', scope: { ...filter } }, { relation: 'user' }],
     })
+    filter.where = { ...filter.where, hostId: user.id }
     const hostedClassrooms = await this.classroomRepository.find(filter)
     // const result = hostedClassrooms.concat(participatedClassrooms)
 
@@ -205,7 +205,9 @@ export class ClassroomController {
     return new GetOneClassroomResponse({ ...classroom, users: usersInClassroom })
     // return classroom
   }
-  @patch('/classrooms/{id}')
+
+  @authenticate('jwt')
+  @post('/classrooms/{id}')
   @response(204, {
     description: 'Classroom PATCH success',
   })
@@ -214,33 +216,31 @@ export class ClassroomController {
     @requestBody({
       content: {
         'application/json': {
-          schema: getModelSchemaRef(Classroom, { partial: true }),
+          schema: getModelSchemaRef(Classroom, {
+            partial: true,
+            exclude: ['createdAt', 'updatedAt'],
+          }),
         },
       },
     })
-    classroom: Classroom,
+    classroomBody: Classroom,
   ): Promise<void> {
-    await this.classroomRepository.updateById(id, classroom)
+    const classroom = await this.classroomRepository.findById(id)
+    const getUser = await this.getCurrentUser()
+    if (classroom.hostId != getUser.id) {
+      throw new HttpErrors.Unauthorized('You are not the host!')
+    }
+    Object.assign(classroom, classroomBody)
+    await this.classroomRepository.save(classroom)
   }
 
-  @put('/classrooms/{id}')
-  @response(204, {
-    description: 'Classroom PUT success',
-  })
-  async replaceById(
-    @param.path.number('id') id: number,
-    @requestBody() classroom: Classroom,
-  ): Promise<void> {
-    await this.classroomRepository.replaceById(id, classroom)
-  }
-
-  @del('/classrooms/{id}')
-  @response(204, {
-    description: 'Classroom DELETE success',
-  })
-  async deleteById(@param.path.number('id') id: number): Promise<void> {
-    await this.classroomRepository.deleteById(id)
-  }
+  // @del('/classrooms/{id}')
+  // @response(204, {
+  //   description: 'Classroom DELETE success',
+  // })
+  // async deleteById(@param.path.number('id') id: number): Promise<void> {
+  //   await this.classroomRepository.deleteById(id)
+  // }
 
   @authenticate('jwt')
   @post('/classrooms/{classroomId}/accept-invitation/')
@@ -285,8 +285,6 @@ export class ClassroomController {
     })
     body: SendInvitationRequest,
   ): Promise<void> {
-    const email = body.userEmails
-
     const user = await this.getCurrentUser()
     const invitee = `${user.fullname} (${user.email})`
 
@@ -295,15 +293,25 @@ export class ClassroomController {
     const classroom = await this.classroomRepository.findById(classroomId)
     const classroomName = classroom.name
     const webLink = process.env.WEB_LINK + `/inv?classroomId=${classroomId}&role=${role}`
-    const emailData: IEmailRequest = {
-      classroomName,
-      from: 'gradeflix@gmail.com',
-      invitee,
-      role: role === ClassroomRole.TEACHER ? 'Giáo viên' : 'Học sinh',
-      to: email,
-      subject,
-      link: webLink,
+
+    const emails = body.userEmails
+    for (const email of emails) {
+      const emailData: IEmailRequest = {
+        classroomName,
+        from: 'gradeflix@gmail.com',
+        invitee,
+        role: role === ClassroomRole.TEACHER ? 'Giáo viên' : 'Học sinh',
+        to: email,
+        subject,
+        link: webLink,
+      }
+
+      // Catch error and keep sending other emails.
+      try {
+        await this.emailManager.sendMail(emailData)
+      } catch (error) {
+        console.log('error when sending invitation', error)
+      }
     }
-    const res = await this.emailManager.sendMail(emailData)
   }
 }

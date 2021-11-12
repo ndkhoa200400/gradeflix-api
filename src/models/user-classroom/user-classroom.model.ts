@@ -17,6 +17,15 @@ import { TimeStampMixin } from '../../mixins'
           unique: true,
         },
       },
+      compositeKeyStudentIdClassroomId: {
+        keys: {
+          classroomId: 1,
+          studentId: 1,
+        },
+        options: {
+          unique: true,
+        },
+      },
     },
   },
 })
@@ -40,7 +49,15 @@ export class UserClassroom extends TimeStampMixin(BaseEntity) {
       enum: Object.values(ClassroomRole),
     },
   })
-  userRole: ClassroomRole;
+  userRole: ClassroomRole
+
+  @property({
+    type: 'string',
+    postgres: {
+      nullable: 'YES',
+    },
+  })
+  studentId?: string;
 
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   [prop: string]: any
