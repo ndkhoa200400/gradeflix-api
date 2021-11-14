@@ -157,9 +157,9 @@ export class ClassroomController {
     const isHost = classroom.hostId === getUser.id
 
     if (!isParticipant && !isHost) {
-      throw new HttpErrors['400']('You are not a member of this classroom')
+      throw new HttpErrors['400']('Bạn không phải là thành viên của lớp.')
     }
-    
+
     return classroom
   }
 
@@ -187,7 +187,7 @@ export class ClassroomController {
       },
     })
     if (!isParticipant && !isHosted) {
-      throw new HttpErrors['404']('Classrooms not found on this user')
+      throw new HttpErrors['403']('Bạn không có quyền truy cập.')
     }
     const classroom = await this.classroomRepository.findById(id, { include: ['host'] })
     const userClassrooms = await this.userClassroomRepository.find({
@@ -230,20 +230,35 @@ export class ClassroomController {
   ): Promise<void> {
     const classroom = await this.classroomRepository.findById(id)
     const getUser = await this.getCurrentUser()
-    if (classroom.hostId != getUser.id) {
-      throw new HttpErrors.Unauthorized('You are not the host!')
+    if (classroom.hostId !== getUser.id) {
+      throw new HttpErrors.Unauthorized('Bạn không phải quản trị viên của lớp học.')
     }
     Object.assign(classroom, classroomBody)
     await this.classroomRepository.save(classroom)
   }
 
-  // @del('/classrooms/{id}')
-  // @response(204, {
-  //   description: 'Classroom DELETE success',
-  // })
-  // async deleteById(@param.path.number('id') id: number): Promise<void> {
-  //   await this.classroomRepository.deleteById(id)
-  // }
+
+  @authenticate('jwt')
+  @get('/classrooms/{classroomId}/check-join-class')
+  @response(200, {
+    description: 'User accepts become teacher',
+  })
+  async checkJoinedClass(
+    @param.path.number('classroomId') classroomId: number,
+  ): Promise<{ isJoined: boolean }> {
+    const getUser = await this.getCurrentUser()
+    const user = await this.userRepository.findById(getUser.id)
+
+    const classroom = await this.classroomRepository.findById(classroomId)
+    const userClassroom = await this.userClassroomRepository.findOne({
+      where: { userId: user.id, classroomId: classroom.id },
+    })
+
+    const isJoined = classroom.hostId === user.id || userClassroom != null
+    return {
+      isJoined,
+    }
+  }
 
   @authenticate('jwt')
   @post('/classrooms/{classroomId}/accept-invitation/')
@@ -262,7 +277,7 @@ export class ClassroomController {
       where: { userId: user.id, classroomId: classroom.id },
     })
     if (classroom.hostId === user.id || userClassroom) {
-      throw new HttpErrors['400']('You already joined this class.')
+      throw new HttpErrors['400']('Bạn đã tham gia lớp này rồi.')
     }
     await this.userRepository.classrooms(user.id).link(classroom.id, {
       throughData: {

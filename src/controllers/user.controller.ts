@@ -70,7 +70,7 @@ export class UserController {
   ): Promise<LoginRes> {
     // check day is valid
     if (userBody.birthday) {
-      if (!dayjs(userBody.birthday).isValid()) throw new HttpErrors['400']('Birthday is not valid')
+      if (!dayjs(userBody.birthday).isValid()) throw new HttpErrors['400']('Ngày sinh không đúng định dạng!')
     }
     const user = await this.userService.register(userBody)
     return user
@@ -101,7 +101,7 @@ export class UserController {
       user = await this.userService.loginSocial(userBody)
     } else {
       if (isExisted.password)
-        throw new HttpErrors.Forbidden('Please login with your account information')
+        throw new HttpErrors.Forbidden('Bạn không thể sử đăng nhập bằng tài khoản này.')
       user = isExisted
 
       const userProfile = this.userService.convertToUserProfile(isExisted)
@@ -166,6 +166,9 @@ export class UserController {
     userBody: PatchUserRequest,
   ): Promise<User> {
     const getUser = await this.getCurrentUser()
+    if (userBody.birthday) {
+      if (!dayjs(userBody.birthday).isValid()) throw new HttpErrors['400']('Ngày sinh không đúng định dạng!')
+    }
     const user = await this.userRepository.findById(getUser.id)
     Object.assign(user, userBody)
    

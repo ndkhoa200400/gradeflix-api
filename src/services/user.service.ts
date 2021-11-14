@@ -33,10 +33,10 @@ export class MyUserService implements UserService<User, LoginReq> {
     }
     const { password = '' } = foundUser
 
-    if (!password) throw new HttpErrors.Forbidden('You are not allowed to use this method')
+    if (!password) throw new HttpErrors.Forbidden('Bạn không có quyền truy cập.')
     const passwordMatched = await this.hasher.comparePassword(credentials.password!, password)
     if (!passwordMatched) {
-      throw new HttpErrors.Unauthorized('Password is not valid')
+      throw new HttpErrors.Unauthorized('Mật khẩu không chính xác.')
     }
     return foundUser
   }
@@ -63,22 +63,19 @@ export class MyUserService implements UserService<User, LoginReq> {
     return new LoginRes({ ...user, token })
   }
 
-  async verifyToken(token: string) {
-    const userProfile = await this.jwtService.verifyToken(token)
-    if (!userProfile) {
-      throw new HttpErrors[400]('Token is invalid')
-    }
-    return userProfile
-  }
-
   async changePassword(userId: number, data: UpdatePasswordRequest) {
     const user = await this.userRepository.findById(userId)
+
+    // validate old password
     const passwordMatched = await this.hasher.comparePassword(data.oldPassword!, user.password)
-    if (!passwordMatched) throw new HttpErrors['401']('Password does not match')
+    if (!passwordMatched) throw new HttpErrors['401']('Mật khẩu cũ không đúng. Vui lòng nhập lại')
+
     user.password = await hash(data.newPassword, await genSalt())
     await this.userRepository.save(user)
+
     const userProfile = this.convertToUserProfile(user)
     const token = await this.jwtService.generateToken(userProfile)
+
     return token
   }
 }

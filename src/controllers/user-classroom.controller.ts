@@ -66,9 +66,9 @@ export class UserClassroomController {
 
     // check if the user uses this route is not host or teacher or own this userid
     if (!isTeacher && !isHost && (!student || student.userId !== getUser.id)) {
-      throw new HttpErrors.Forbidden('You are not allowed to do this.')
+      throw new HttpErrors.Forbidden('Bạn không có quyền thay đổi thông tin.')
     }
-    if (!student) throw new HttpErrors.NotFound('Student not found from this classroom')
+    if (!student) throw new HttpErrors.NotFound('Không tìm thấy sinh viên trong lớp học này.')
 
     const isStudentIdExisted = await this.userClassroomRepository.findOne({
       where: {
@@ -77,7 +77,7 @@ export class UserClassroomController {
         userId: { neq: getUser.id },
       },
     })
-    if (isStudentIdExisted) throw new HttpErrors['400']('Student ID already exists')
+    if (isStudentIdExisted) throw new HttpErrors['400']('Mã số sinh viên đã tồn tại!')
 
     student.studentId = body.studentId
     await this.userClassroomRepository.save(student)

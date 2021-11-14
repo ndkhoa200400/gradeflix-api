@@ -26,7 +26,7 @@ export class JWTService {
 
   async verifyToken(token: string): Promise<UserProfile> {
     if (!token) {
-      throw new HttpErrors.Unauthorized(`Error verifying token:'token' is null`)
+      throw new HttpErrors.Unauthorized(`Không tìm thấy token. Vui lòng đăng nhập lại!`)
     }
 
     const decryptedToken = await verifyAsync(token, jwtSecret)
