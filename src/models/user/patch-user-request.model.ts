@@ -6,14 +6,19 @@ import { model, property } from '@loopback/repository'
 export class PatchUserRequest {
   @property({
     type: 'string',
-    required: true,
   })
-  fullname: string
+  fullname?: string
 
   @property({
     type: 'string',
   })
   avatar?: string;
+
+
+  @property({
+    type: 'string',
+  })
+  birthday?: string;
 
   // Define well-known properties here
 
