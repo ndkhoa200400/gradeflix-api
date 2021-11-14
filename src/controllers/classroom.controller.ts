@@ -148,15 +148,18 @@ export class ClassroomController {
     @param.path.number('id') id: number,
     @param.filter(Classroom, { exclude: 'where' }) filter?: FilterExcludingWhere<Classroom>,
   ): Promise<Classroom> {
+    filter = filter ?? {}
     const getUser = await this.getCurrentUser()
     const isParticipant = await this.userClassroomRepository.findOne({
       where: { classroomId: id, userId: getUser.id },
     })
-
-    if (!isParticipant) {
-      throw new HttpErrors['404']('Classrooms not found on this user')
-    }
     const classroom = await this.classroomRepository.findById(id, filter)
+    const isHost = classroom.hostId === getUser.id
+
+    if (!isParticipant && !isHost) {
+      throw new HttpErrors['400']('You are not a member of this classroom')
+    }
+    
     return classroom
   }
 
