@@ -22,6 +22,12 @@ export class User extends TimeStampMixin(BaseEntity) {
 
   @property({
     type: 'string',
+    default: '01/01/1941'
+  })
+  birthday: string
+
+  @property({
+    type: 'string',
   })
   avatar?: string
 

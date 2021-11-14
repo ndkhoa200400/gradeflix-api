@@ -8,14 +8,21 @@ import {
   getModelSchemaRef,
   HttpErrors,
   param,
-  patch,
   post,
   requestBody,
   response,
 } from '@loopback/rest'
-import { LoginReq, LoginRes, PatchUserRequest, User, UserLoginSocialRequest } from '../models'
+import {
+  LoginReq,
+  LoginRes,
+  PatchUserRequest,
+  UpdatePasswordRequest,
+  User,
+  UserLoginSocialRequest,
+} from '../models'
 import { MyUserService } from '../services'
 import { UserRepository } from '../repositories'
+import dayjs from 'dayjs'
 
 export class UserController {
   constructor(
@@ -61,7 +68,10 @@ export class UserController {
     })
     userBody: User,
   ): Promise<LoginRes> {
-    // ensure the user exists, and the password is correct
+    // check day is valid
+    if (userBody.birthday) {
+      if (!dayjs(userBody.birthday).isValid()) throw new HttpErrors['400']('Birthday is not valid')
+    }
     const user = await this.userService.register(userBody)
     return user
   }
@@ -154,5 +164,25 @@ export class UserController {
     const user = await this.userRepository.findById(getUser.id)
     Object.assign(user, userBody)
     await this.userRepository.save(user)
+  }
+
+  @authenticate('jwt')
+  @post('/users/me/password')
+  @response(204, {
+    description: 'User UPDATE Password',
+  })
+  async updatePassword(
+    @requestBody({
+      content: {
+        'application/json': {
+          schema: getModelSchemaRef(UpdatePasswordRequest),
+        },
+      },
+    })
+    passwordBody: UpdatePasswordRequest,
+  ): Promise<{ token: string }> {
+    const getUser = await this.getCurrentUser()
+    const token = await this.userService.changePassword(getUser.id, passwordBody)
+    return {token}
   }
 }

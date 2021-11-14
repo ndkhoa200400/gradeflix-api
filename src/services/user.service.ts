@@ -4,7 +4,7 @@ import { inject } from '@loopback/core'
 import { repository } from '@loopback/repository'
 import { HttpErrors } from '@loopback/rest'
 import { PasswordHasherBindings } from '../keys'
-import { LoginReq, LoginRes, User, UserLoginSocialRequest } from '../models'
+import { LoginReq, LoginRes, UpdatePasswordRequest, User, UserLoginSocialRequest } from '../models'
 import { UserRepository } from '../repositories'
 import { BcryptHasher } from './hash-password.service'
 import { securityId, UserProfile } from '@loopback/security'
@@ -69,5 +69,16 @@ export class MyUserService implements UserService<User, LoginReq> {
       throw new HttpErrors[400]('Token is invalid')
     }
     return userProfile
+  }
+
+  async changePassword(userId: number, data: UpdatePasswordRequest) {
+    const user = await this.userRepository.findById(userId)
+    const passwordMatched = await this.hasher.comparePassword(data.oldPassword!, user.password)
+    if (!passwordMatched) throw new HttpErrors['401']('Password does not match')
+    user.password = await hash(data.newPassword, await genSalt())
+    await this.userRepository.save(user)
+    const userProfile = this.convertToUserProfile(user)
+    const token = await this.jwtService.generateToken(userProfile)
+    return token
   }
 }

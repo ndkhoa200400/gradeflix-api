@@ -56,7 +56,10 @@ export class MySequence implements SequenceHandler {
       ) {
         Object.assign(err, { statusCode: 401 /* Unauthorized */ })
       }
-
+      if (err.code ==="23505")
+      {
+        Object.assign(err, { statusCode: 400 /* Unauthorized */ })
+      }
       this.reject(context, err as Error)
     }
   }
