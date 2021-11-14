@@ -147,8 +147,13 @@ export class UserController {
 
   @authenticate('jwt')
   @post('/users/me')
-  @response(204, {
+  @response(200, {
     description: 'User UPDATE',
+    content: {
+      'application/json': {
+        schema: getModelSchemaRef(User, { includeRelations: true }),
+      },
+    },
   })
   async updateUser(
     @requestBody({
@@ -159,11 +164,12 @@ export class UserController {
       },
     })
     userBody: PatchUserRequest,
-  ): Promise<void> {
+  ): Promise<User> {
     const getUser = await this.getCurrentUser()
     const user = await this.userRepository.findById(getUser.id)
     Object.assign(user, userBody)
-    await this.userRepository.save(user)
+   
+    return this.userRepository.save(user)
   }
 
   @authenticate('jwt')
