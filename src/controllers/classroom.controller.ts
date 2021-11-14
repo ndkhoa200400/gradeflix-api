@@ -32,6 +32,7 @@ import {
   UserWithRole,
 } from '../models/classroom-response.model'
 import { EmailManagerBindings } from '../keys'
+import { hashSha256 } from '../common/helpers'
 export class ClassroomController {
   constructor(
     @repository(ClassroomRepository)
@@ -237,7 +238,6 @@ export class ClassroomController {
     await this.classroomRepository.save(classroom)
   }
 
-
   @authenticate('jwt')
   @get('/classrooms/{classroomId}/check-join-class')
   @response(200, {
@@ -268,14 +268,25 @@ export class ClassroomController {
   async acceptInvitation(
     @param.path.number('classroomId') classroomId: number,
     @param.query.string('role') role: ClassroomRole,
+    @param.query.string('token') token: string,
   ): Promise<void> {
     const getUser = await this.getCurrentUser()
     const user = await this.userRepository.findById(getUser.id)
-
+    role = role ?? ClassroomRole.STUDENT
     const classroom = await this.classroomRepository.findById(classroomId)
     const userClassroom = await this.userClassroomRepository.findOne({
       where: { userId: user.id, classroomId: classroom.id },
     })
+
+    const hashToken = hashSha256(`${classroomId}|${role}|${user.email}`)
+    if (token || role === ClassroomRole.TEACHER)
+    {
+      if (hashToken !== token)
+      {
+        throw new HttpErrors['403']('Lời mời không hợp lệ. Vui lòng liên hệ với giáo viên hoặc quản trị viên lớp học.')
+      }
+    }
+
     if (classroom.hostId === user.id || userClassroom) {
       throw new HttpErrors['400']('Bạn đã tham gia lớp này rồi.')
     }
@@ -304,7 +315,7 @@ export class ClassroomController {
     body: SendInvitationRequest,
   ): Promise<void> {
     const user = await this.getCurrentUser()
-
+    role = role ?? ClassroomRole.STUDENT
     const classroom = await this.classroomRepository.findById(classroomId)
 
     const isTeacher = await this.userClassroomRepository.findOne({
@@ -316,7 +327,7 @@ export class ClassroomController {
     })
     // authorize user if user is teacher or host
     if (classroom.hostId !== user.id && !isTeacher) {
-      throw new HttpErrors.Forbidden('You are now allowed to do this.')
+      throw new HttpErrors.Forbidden('Bạn không có quyền truy cập.')
     }
 
     const invitee = `${user.fullname} (${user.email})`
@@ -324,10 +335,18 @@ export class ClassroomController {
     const subject = 'Lời mời tham gia lớp học'
 
     const classroomName = classroom.name
-    const webLink = process.env.WEB_LINK + `/inv?classroomId=${classroomId}&role=${role}`
 
     const emails = body.userEmails
+
     for (const email of emails) {
+      // create token by using sha256
+      // template: classroomId|role|userId
+
+      const token = hashSha256(`${classroomId}|${role}|${email}`)
+
+      const webLink =
+        process.env.WEB_LINK + `/invitation?classroomId=${classroomId}&role=${role}&token=${token}`
+
       const emailData: IEmailRequest = {
         classroomName,
         from: 'gradeflix@gmail.com',
