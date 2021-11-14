@@ -231,8 +231,15 @@ export class ClassroomController {
   ): Promise<void> {
     const classroom = await this.classroomRepository.findById(id)
     const getUser = await this.getCurrentUser()
-    if (classroom.hostId !== getUser.id) {
-      throw new HttpErrors.Unauthorized('Bạn không phải quản trị viên của lớp học.')
+    const isTeacher = await this.userClassroomRepository.findOne({
+      where: {
+        userId: getUser.id,
+        classroomId: classroom.id,
+        role: ClassroomRole.TEACHER,
+      },
+    })
+    if (classroom.hostId !== getUser.id || !isTeacher) {
+      throw new HttpErrors.Unauthorized('Bạn không được quyền sửa thông tin lớp học.')
     }
     Object.assign(classroom, classroomBody)
     await this.classroomRepository.save(classroom)
@@ -279,11 +286,11 @@ export class ClassroomController {
     })
 
     const hashToken = hashSha256(`${classroomId}|${role}|${user.email}`)
-    if (token || role === ClassroomRole.TEACHER)
-    {
-      if (hashToken !== token)
-      {
-        throw new HttpErrors['403']('Lời mời không hợp lệ. Vui lòng liên hệ với giáo viên hoặc quản trị viên lớp học.')
+    if (token || role === ClassroomRole.TEACHER) {
+      if (hashToken !== token) {
+        throw new HttpErrors['403'](
+          'Lời mời không hợp lệ. Vui lòng liên hệ với giáo viên hoặc quản trị viên lớp học.',
+        )
       }
     }
 

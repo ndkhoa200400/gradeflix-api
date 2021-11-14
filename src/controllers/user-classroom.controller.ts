@@ -82,4 +82,47 @@ export class UserClassroomController {
     student.studentId = body.studentId
     await this.userClassroomRepository.save(student)
   }
+
+  @authenticate('jwt')
+  @post('/classrooms/{classroomId}/users/{userId}/kick')
+  @response(204, {
+    description: 'Student ID changes successfully',
+  })
+  async kickStudent(
+    @param.path.number('classroomId') classroomId: number,
+    @param.path.number('userId') userId: number,
+  ): Promise<void> {
+    const classroom = await this.classroomRepository.findById(classroomId)
+
+    // user who calls this api
+    const getUser = await this.getCurrentUser()
+    if (getUser.id === userId) throw new HttpErrors['400']('Không thể tự mời mình ra khỏi lớp.')
+    const isTeacher = await this.userClassroomRepository.findOne({
+      where: {
+        userId: getUser.id,
+        userRole: ClassroomRole.TEACHER,
+        classroomId: classroomId,
+      },
+    })
+
+    // user that is kicked
+    const user = await this.userClassroomRepository.findOne({
+      where: {
+        userId: userId,
+        classroomId: classroomId,
+      },
+    })
+
+    const isHost = classroom.hostId === getUser.id
+
+    // check if the user uses this route is not host or teacher
+    if (!isTeacher && !isHost) {
+      throw new HttpErrors.Forbidden('Bạn không có quyền thực hiện hành động này.')
+    }
+    if (!user) throw new HttpErrors.NotFound('Không tìm thấy thành viên này.')
+    if (user.userRole === ClassroomRole.TEACHER) {
+      if (!isHost) throw new HttpErrors.Forbidden('Bạn không có quyền thực hiện hành động này.')
+    }
+    await this.userClassroomRepository.deleteById(user.id)
+  }
 }
