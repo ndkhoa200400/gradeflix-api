@@ -43,8 +43,8 @@ export class MyUserService implements UserService<User, LoginReq> {
 
   // Add information into token
   convertToUserProfile(user: User): UserProfile {
-    const { fullname, email, avatar, id } = user
-    return { [securityId]: user.id.toString(), fullname, email, avatar, id }
+    const { email, id } = user
+    return { [securityId]: user.id.toString(), email, id }
   }
 
   async register(userData: User) {
