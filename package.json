@@ -69,6 +69,7 @@
     "dotenv": "^10.0.0",
     "dotenv-expand": "^5.1.0",
     "ejs": "^3.1.6",
+    "google-auth-library": "^7.10.2",
     "html-to-text": "^8.1.0",
     "jsonwebtoken": "^8.5.1",
     "juice": "^8.0.0",

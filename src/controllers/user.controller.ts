@@ -70,7 +70,8 @@ export class UserController {
   ): Promise<LoginRes> {
     // check day is valid
     if (userBody.birthday) {
-      if (!dayjs(userBody.birthday).isValid()) throw new HttpErrors['400']('Ngày sinh không đúng định dạng!')
+      if (!dayjs(userBody.birthday).isValid())
+        throw new HttpErrors['400']('Ngày sinh không đúng định dạng!')
     }
     const user = await this.userService.register(userBody)
     return user
@@ -130,6 +131,37 @@ export class UserController {
     return this.userRepository.findById(id, filter)
   }
 
+  @post('/users/login-with-google')
+  @response(200, {
+    description: 'User model instance',
+    content: {
+      'application/json': {
+        schema: getModelSchemaRef(User, { includeRelations: true }),
+      },
+    },
+  })
+  async loginWithGoogle(
+    @requestBody({
+      description: 'User model instance',
+      content: {
+        'application/json': {
+          schema: {
+            type: 'object',
+            properties: {
+              token: { type: 'string' },
+            },
+          },
+        },
+      },
+    })
+    body: {
+      token: string
+    },
+  ): Promise<LoginRes> {
+    const res = await this.userService.verifyGoogleToken(body.token)
+    return res
+  }
+
   @authenticate('jwt')
   @get('/users/me')
   @response(200, {
@@ -167,11 +199,12 @@ export class UserController {
   ): Promise<User> {
     const getUser = await this.getCurrentUser()
     if (userBody.birthday) {
-      if (!dayjs(userBody.birthday).isValid()) throw new HttpErrors['400']('Ngày sinh không đúng định dạng!')
+      if (!dayjs(userBody.birthday).isValid())
+        throw new HttpErrors['400']('Ngày sinh không đúng định dạng!')
     }
     const user = await this.userRepository.findById(getUser.id)
     Object.assign(user, userBody)
-   
+
     return this.userRepository.save(user)
   }
 
@@ -192,6 +225,6 @@ export class UserController {
   ): Promise<{ token: string }> {
     const getUser = await this.getCurrentUser()
     const token = await this.userService.changePassword(getUser.id, passwordBody)
-    return {token}
+    return { token }
   }
 }

@@ -9,7 +9,7 @@ import { UserRepository } from '../repositories'
 import { BcryptHasher } from './hash-password.service'
 import { securityId, UserProfile } from '@loopback/security'
 import { genSalt, hash } from 'bcryptjs'
-
+import { verify } from '../common/helpers'
 export class MyUserService implements UserService<User, LoginReq> {
   constructor(
     @repository(UserRepository)
@@ -77,5 +77,25 @@ export class MyUserService implements UserService<User, LoginReq> {
     const token = await this.jwtService.generateToken(userProfile)
 
     return token
+  }
+
+  async verifyGoogleToken(token: string): Promise<LoginRes> {
+    const payload = await verify(token)
+    let user = await this.userRepository.findOne({
+      where: {
+        email: payload.email,
+      },
+    })
+    if (!user) {
+      user = await this.userRepository.create({
+        email: payload.email,
+        avatar: payload.picture,
+        fullname: `${payload.family_name} ${payload.given_name}`,
+      })
+    }
+    const userProfile = this.convertToUserProfile(user)
+    const genToken = await this.jwtService.generateToken(userProfile)
+
+    return new LoginRes({ ...user, token: genToken })
   }
 }
