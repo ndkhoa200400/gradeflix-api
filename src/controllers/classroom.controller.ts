@@ -171,7 +171,7 @@ export class ClassroomController {
       ...classroom,
       user: new UserWithRole({
         ...currentUser,
-        userRole: isParticipant?.userRole?? ClassroomRole.HOST,
+        userRole: isParticipant?.userRole ?? ClassroomRole.HOST,
       }),
     })
   }
@@ -186,9 +186,7 @@ export class ClassroomController {
       },
     },
   })
-  async findUsersOfClassroom(
-    @param.path.string('id') id: string,
-  ): Promise<GetOneClassroomResponse> {
+  async findUsersOfClassroom(@param.path.string('id') id: string): Promise<UserWithRole[]> {
     const getUser = await this.getCurrentUser()
     const isParticipant = await this.userClassroomRepository.findOne({
       where: { classroomId: id, userId: getUser.id },
@@ -202,7 +200,6 @@ export class ClassroomController {
     if (!isParticipant && !isHosted) {
       throw new HttpErrors['403']('Bạn không có quyền truy cập.')
     }
-    const classroom = await this.classroomRepository.findById(id, { include: ['host'] })
     const userClassrooms = await this.userClassroomRepository.find({
       where: { classroomId: id },
       include: ['user'],
@@ -218,7 +215,7 @@ export class ClassroomController {
       usersInClassroom.push(temp)
     }
 
-    return new GetOneClassroomResponse({ ...classroom, users: usersInClassroom })
+    return usersInClassroom
     // return classroom
   }
 
