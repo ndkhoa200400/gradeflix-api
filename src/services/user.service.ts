@@ -4,7 +4,7 @@ import { inject } from '@loopback/core'
 import { repository } from '@loopback/repository'
 import { HttpErrors } from '@loopback/rest'
 import { PasswordHasherBindings } from '../keys'
-import { LoginReq, LoginRes, UpdatePasswordRequest, User, UserLoginSocialRequest } from '../models'
+import { LoginReq, LoginRes, UpdatePasswordRequest, User } from '../models'
 import { UserRepository } from '../repositories'
 import { BcryptHasher } from './hash-password.service'
 import { securityId, UserProfile } from '@loopback/security'
@@ -55,13 +55,6 @@ export class MyUserService implements UserService<User, LoginReq> {
     return new LoginRes({ ...user, token })
   }
 
-  async loginSocial(userData: UserLoginSocialRequest) {
-    // const password = await hash('social', await genSalt())
-    const user = await this.userRepository.create({ ...userData })
-    const userProfile = this.convertToUserProfile(user)
-    const token = await this.jwtService.generateToken(userProfile)
-    return new LoginRes({ ...user, token })
-  }
 
   async changePassword(userId: number, data: UpdatePasswordRequest) {
     const user = await this.userRepository.findById(userId)

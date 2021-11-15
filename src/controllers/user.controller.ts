@@ -18,7 +18,6 @@ import {
   PatchUserRequest,
   UpdatePasswordRequest,
   User,
-  UserLoginSocialRequest,
 } from '../models'
 import { MyUserService } from '../services'
 import { UserRepository } from '../repositories'
@@ -77,40 +76,6 @@ export class UserController {
     return user
   }
 
-  @post('/users/login-social')
-  @response(201, {
-    description: 'User Login with Social Account',
-    content: { 'application/json': { schema: LoginRes } },
-  })
-  async loginWithSocial(
-    @requestBody({
-      content: {
-        'application/json': {
-          schema: getModelSchemaRef(UserLoginSocialRequest, {
-            exclude: ['id'],
-          }),
-        },
-      },
-    })
-    userBody: UserLoginSocialRequest,
-  ): Promise<LoginRes> {
-    // ensure the user exists, and the password is correct
-    const isExisted = await this.userRepository.findOne({ where: { email: userBody.email } })
-
-    let user: LoginRes
-    if (!isExisted) {
-      user = await this.userService.loginSocial(userBody)
-    } else {
-      if (isExisted.password)
-        throw new HttpErrors.Forbidden('Bạn không thể sử đăng nhập bằng tài khoản này.')
-      user = isExisted
-
-      const userProfile = this.userService.convertToUserProfile(isExisted)
-
-      user.token = await this.jwtService.generateToken(userProfile)
-    }
-    return user
-  }
 
   @authenticate('jwt')
   @get('/users/{id}')
