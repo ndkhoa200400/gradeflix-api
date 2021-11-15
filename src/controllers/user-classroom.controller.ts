@@ -84,11 +84,33 @@ export class UserClassroomController {
   }
 
   @authenticate('jwt')
+  @post('/classrooms/{classroomId}/users/leave')
+  @response(204, {
+    description: 'User leaves clasroom',
+  })
+  async leaveClassroom(@param.path.string('classroomId') classroomId: string): Promise<void> {
+    const getUser = await this.getCurrentUser()
+    const userClassroom = await this.userClassroomRepository.findOne({
+      where: {
+        classroomId: classroomId,
+        userId: getUser.id,
+      },
+    })
+    if (!userClassroom) throw new HttpErrors.Forbidden('Bạn không có quyền truy cập')
+    const classroom = await this.classroomRepository.findById(classroomId)
+
+    if (classroom.hostId === getUser.id)
+      throw new HttpErrors['400']('Quản trị viên không thể rời khỏi phòng học.')
+
+    await this.userClassroomRepository.deleteById(userClassroom.id)
+  }
+
+  @authenticate('jwt')
   @post('/classrooms/{classroomId}/users/{userId}/kick')
   @response(204, {
-    description: 'Student ID changes successfully',
+    description: 'Kick out one user',
   })
-  async kickStudent(
+  async kickUser(
     @param.path.string('classroomId') classroomId: string,
     @param.path.number('userId') userId: number,
   ): Promise<void> {
@@ -97,6 +119,7 @@ export class UserClassroomController {
     // user who calls this api
     const getUser = await this.getCurrentUser()
     if (getUser.id === userId) throw new HttpErrors['400']('Không thể tự mời mình ra khỏi lớp.')
+
     const isTeacher = await this.userClassroomRepository.findOne({
       where: {
         userId: getUser.id,
