@@ -9,7 +9,7 @@ import { Classroom, ClassroomRelations, User } from '../models'
 export class ClassroomRepository extends TimeStampRepositoryMixin<
   Classroom,
   typeof Classroom.prototype.id,
-  Constructor<DefaultCrudRepository<Classroom, typeof Classroom.prototype.id, ClassroomRelations>>
+  Constructor<DefaultCrudRepository<Classroom, typeof Classroom.prototype.id | number, ClassroomRelations>>
 >(DefaultCrudRepository) {
   public readonly host: BelongsToAccessor<User, typeof User.prototype.id>
 

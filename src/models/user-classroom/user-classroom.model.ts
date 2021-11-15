@@ -41,7 +41,7 @@ export class UserClassroom extends TimeStampMixin(BaseEntity) {
   userId: number
 
   @belongsTo(() => Classroom, { name: 'classroom' })
-  classroomId: number
+  classroomId: string
 
   @property({
     type: 'string',

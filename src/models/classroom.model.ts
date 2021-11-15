@@ -6,21 +6,20 @@ import { TimeStampMixin } from '../mixins'
 
 @model({
   settings: {
-    indexes:{
+    indexes: {
       // eslint-disable-next-line @typescript-eslint/naming-convention
-      classroom_host_idx:{
-        hostId: 1
-      }
-    }
-  }
+      classroom_host_idx: {
+        hostId: 1,
+      },
+    },
+  },
 })
 export class Classroom extends TimeStampMixin(BaseEntity) {
   @property({
-    type: 'number',
+    type: 'string',
     id: true,
-    generated: true,
   })
-  id: number
+  id: string
 
   @property({
     type: 'string',

@@ -1,5 +1,5 @@
 import { authenticate } from '@loopback/authentication'
-import { UserServiceBindings } from '@loopback/authentication-jwt'
+import { User, UserServiceBindings } from '@loopback/authentication-jwt'
 import { Getter, inject } from '@loopback/core'
 import {
   Count,
@@ -33,6 +33,7 @@ import {
 } from '../models/classroom-response.model'
 import { EmailManagerBindings } from '../keys'
 import { hashSha256 } from '../common/helpers'
+import { nanoid } from 'nanoid'
 export class ClassroomController {
   constructor(
     @repository(ClassroomRepository)
@@ -70,6 +71,7 @@ export class ClassroomController {
     const getUser = await this.getCurrentUser()
     const user = await this.userRepository.findById(getUser.id)
     classroom.hostId = user.id
+    classroom.id = nanoid(8)
     return this.classroomRepository.create(classroom)
   }
 
@@ -146,22 +148,32 @@ export class ClassroomController {
     },
   })
   async findById(
-    @param.path.number('id') id: number,
+    @param.path.string('id') id: string,
     @param.filter(Classroom, { exclude: 'where' }) filter?: FilterExcludingWhere<Classroom>,
-  ): Promise<Classroom> {
+  ): Promise<GetManyClassroomResponse> {
     filter = filter ?? {}
     const getUser = await this.getCurrentUser()
+
     const isParticipant = await this.userClassroomRepository.findOne({
       where: { classroomId: id, userId: getUser.id },
     })
     const classroom = await this.classroomRepository.findById(id, filter)
+
     const isHost = classroom.hostId === getUser.id
 
     if (!isParticipant && !isHost) {
       throw new HttpErrors['400']('Bạn không phải là thành viên của lớp.')
     }
 
-    return classroom
+    const currentUser = await this.userRepository.findById(getUser.id)
+
+    return new GetManyClassroomResponse({
+      ...classroom,
+      user: new UserWithRole({
+        ...currentUser,
+        userRole: isParticipant?.userRole?? ClassroomRole.HOST,
+      }),
+    })
   }
 
   @authenticate('jwt')
@@ -175,7 +187,7 @@ export class ClassroomController {
     },
   })
   async findUsersOfClassroom(
-    @param.path.number('id') id: number,
+    @param.path.string('id') id: string,
   ): Promise<GetOneClassroomResponse> {
     const getUser = await this.getCurrentUser()
     const isParticipant = await this.userClassroomRepository.findOne({
@@ -216,7 +228,7 @@ export class ClassroomController {
     description: 'Classroom PATCH success',
   })
   async updateById(
-    @param.path.number('id') id: number,
+    @param.path.string('id') id: string,
     @requestBody({
       content: {
         'application/json': {
@@ -251,7 +263,7 @@ export class ClassroomController {
     description: 'User accepts become teacher',
   })
   async checkJoinedClass(
-    @param.path.number('classroomId') classroomId: number,
+    @param.path.string('classroomId') classroomId: string,
   ): Promise<{ isJoined: boolean }> {
     const getUser = await this.getCurrentUser()
     const user = await this.userRepository.findById(getUser.id)
@@ -273,7 +285,7 @@ export class ClassroomController {
     description: 'User accepts become teacher',
   })
   async acceptInvitation(
-    @param.path.number('classroomId') classroomId: number,
+    @param.path.string('classroomId') classroomId: string,
     @param.query.string('role') role: ClassroomRole,
     @param.query.string('token') token: string,
   ): Promise<void> {
@@ -310,7 +322,7 @@ export class ClassroomController {
     description: 'User UPDATE',
   })
   async sendInvitation(
-    @param.path.number('classroomId') classroomId: number,
+    @param.path.string('classroomId') classroomId: string,
     @param.query.string('role') role: ClassroomRole,
     @requestBody({
       content: {

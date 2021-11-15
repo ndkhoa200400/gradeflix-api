@@ -76,6 +76,7 @@
     "loopback-connector-postgresql": "^5.3.0",
     "loopback-connector-rest": "^3.2.0",
     "moment": "^2.29.1",
+    "nanoid": "^3.1.30",
     "nodemailer": "^6.7.0",
     "tslib": "^2.0.0"
   },

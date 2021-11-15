@@ -28,7 +28,7 @@ export class UserClassroomController {
     description: 'Student ID changes successfully',
   })
   async changeStudentInfo(
-    @param.path.number('classroomId') classroomId: number,
+    @param.path.string('classroomId') classroomId: string,
     @param.path.number('userId') userId: number,
     @requestBody({
       content: {
@@ -89,7 +89,7 @@ export class UserClassroomController {
     description: 'Student ID changes successfully',
   })
   async kickStudent(
-    @param.path.number('classroomId') classroomId: number,
+    @param.path.string('classroomId') classroomId: string,
     @param.path.number('userId') userId: number,
   ): Promise<void> {
     const classroom = await this.classroomRepository.findById(classroomId)

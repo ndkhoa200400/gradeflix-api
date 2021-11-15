@@ -10,7 +10,7 @@ export class UserClassroomRepository extends TimeStampRepositoryMixin<
   UserClassroom,
   typeof UserClassroom.prototype.id,
   Constructor<
-    DefaultCrudRepository<UserClassroom, typeof UserClassroom.prototype.id, UserClassroomRelations>
+    DefaultCrudRepository<UserClassroom, typeof UserClassroom.prototype.id | string, UserClassroomRelations>
   >
 >(DefaultCrudRepository) {
   public readonly user: BelongsToAccessor<User, typeof User.prototype.id>

@@ -15,7 +15,6 @@ export class UserWithRole extends User {
 
   constructor(data?: Partial<Omit<UserWithRole, 'password'>>) {
     super(data)
-    console.log('data', data)
   }
 }
 
