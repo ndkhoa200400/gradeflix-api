@@ -210,10 +210,10 @@ export class ClassroomController {
     usersInClassroom.push(
       new UserWithRole({
         ...classroom.host,
-        userRole: ClassroomRole.HOST
+        userRole: ClassroomRole.HOST,
       }),
     )
-     // Tìm các thành viên trong lớp
+    // Tìm các thành viên trong lớp
     for (const userClassroom of userClassrooms) {
       const temp = new UserWithRole({
         userRole: userClassroom.userRole,
@@ -244,7 +244,7 @@ export class ClassroomController {
       },
     })
     classroomBody: Classroom,
-  ): Promise<void> {
+  ): Promise<Classroom> {
     const classroom = await this.classroomRepository.findById(id)
     const getUser = await this.getCurrentUser()
     const isTeacher = await this.userClassroomRepository.findOne({
@@ -254,11 +254,11 @@ export class ClassroomController {
         role: ClassroomRole.TEACHER,
       },
     })
-    if (classroom.hostId !== getUser.id || !isTeacher) {
+    if (classroom.hostId !== getUser.id && !isTeacher) {
       throw new HttpErrors.Unauthorized('Bạn không được quyền sửa thông tin lớp học.')
     }
     Object.assign(classroom, classroomBody)
-    await this.classroomRepository.save(classroom)
+    return await this.classroomRepository.save(classroom)
   }
 
   @authenticate('jwt')
@@ -296,6 +296,10 @@ export class ClassroomController {
     const getUser = await this.getCurrentUser()
     const user = await this.userRepository.findById(getUser.id)
     role = role ?? ClassroomRole.STUDENT
+    if (role === ClassroomRole.HOST)
+      throw new HttpErrors['403']('Bạn không thể thực hiện hành động này.')
+    if (!(role in ClassroomRole)) throw new HttpErrors['400']('Vai trò không hợp lệ.')
+    
     const classroom = await this.classroomRepository.findById(classroomId)
     const userClassroom = await this.userClassroomRepository.findOne({
       where: { userId: user.id, classroomId: classroom.id },
@@ -338,7 +342,13 @@ export class ClassroomController {
     body: SendInvitationRequest,
   ): Promise<void> {
     const user = await this.getCurrentUser()
+
     role = role ?? ClassroomRole.STUDENT
+    if (role === ClassroomRole.HOST)
+      throw new HttpErrors['403']('Bạn không thể thực hiện hành động này.')
+    if (!(role in ClassroomRole)) throw new HttpErrors['400']('Vai trò không hợp lệ.')
+  
+
     const classroom = await this.classroomRepository.findById(classroomId)
 
     const isTeacher = await this.userClassroomRepository.findOne({
