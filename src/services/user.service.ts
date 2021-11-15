@@ -65,7 +65,8 @@ export class MyUserService implements UserService<User, LoginReq> {
 
   async changePassword(userId: number, data: UpdatePasswordRequest) {
     const user = await this.userRepository.findById(userId)
-
+    if (!user.password)
+      throw new HttpErrors['403']('Bạn không thể đổi mật khẩu với tài khoản đăng nhập qua Google.')
     // validate old password
     const passwordMatched = await this.hasher.comparePassword(data.oldPassword!, user.password)
     if (!passwordMatched) throw new HttpErrors['401']('Mật khẩu cũ không đúng. Vui lòng nhập lại')
@@ -91,7 +92,13 @@ export class MyUserService implements UserService<User, LoginReq> {
         email: payload.email,
         avatar: payload.picture,
         fullname: `${payload.family_name} ${payload.given_name}`,
+        googleId: payload.sub,
       })
+    } else {
+      if (!user.googleId) {
+        user.googleId = payload.sub
+        user = await this.userRepository.save(user)
+      }
     }
     const userProfile = this.convertToUserProfile(user)
     const genToken = await this.jwtService.generateToken(userProfile)

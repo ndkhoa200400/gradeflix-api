@@ -22,6 +22,14 @@ export class User extends TimeStampMixin(BaseEntity) {
 
   @property({
     type: 'string',
+    postgres: {
+      nullable: 'true',
+    },
+  })
+  googleId?: string
+
+  @property({
+    type: 'string',
     default: '01/01/1995'
   })
   birthday: string
