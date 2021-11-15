@@ -21,7 +21,7 @@ import {
   response,
   HttpErrors,
 } from '@loopback/rest'
-import { Classroom, SendInvitationRequest } from '../models'
+import { Classroom, SendInvitationRequest, UserClassroom } from '../models'
 import { ClassroomRepository, UserClassroomRepository, UserRepository } from '../repositories'
 import { EmailManager, IEmailRequest, MyUserService } from '../services'
 import { UserProfile, SecurityBindings } from '@loopback/security'
@@ -191,13 +191,15 @@ export class ClassroomController {
     const isParticipant = await this.userClassroomRepository.findOne({
       where: { classroomId: id, userId: getUser.id },
     })
-    const isHosted = await this.classroomRepository.findOne({
+    const classroom = await this.classroomRepository.findOne({
       where: {
         hostId: getUser.id,
         classroomId: id,
       },
+      include: ['host'],
     })
-    if (!isParticipant && !isHosted) {
+    if (!classroom) throw new HttpErrors['404']('Không tìm thấy lớp học')
+    if (!isParticipant && classroom.hostId !== getUser.id) {
       throw new HttpErrors['403']('Bạn không có quyền truy cập.')
     }
     const userClassrooms = await this.userClassroomRepository.find({
@@ -205,8 +207,13 @@ export class ClassroomController {
       include: ['user'],
     })
     const usersInClassroom: UserWithRole[] = []
-
-    // Tìm các thành viên trong lớp
+    usersInClassroom.push(
+      new UserWithRole({
+        ...classroom.host,
+        userRole: ClassroomRole.HOST
+      }),
+    )
+     // Tìm các thành viên trong lớp
     for (const userClassroom of userClassrooms) {
       const temp = new UserWithRole({
         userRole: userClassroom.userRole,
