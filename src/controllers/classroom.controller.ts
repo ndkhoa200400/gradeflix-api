@@ -66,7 +66,7 @@ export class ClassroomController {
         },
       },
     })
-    classroom: Omit<Classroom, 'id'>,
+    classroom: Classroom,
   ): Promise<Classroom> {
     const getUser = await this.getCurrentUser()
     const user = await this.userRepository.findById(getUser.id)
@@ -197,13 +197,13 @@ export class ClassroomController {
 
     const classroom = await this.classroomRepository.findOne({
       where: {
-        classroomId: id,
+        id: id,
       },
-      include: ['host'],
     })
     if (!classroom) throw new HttpErrors['404']('Không tìm thấy lớp học')
 
     const isHost = classroom.hostId === getUser.id
+
     if (!isParticipant && !isHost) {
       throw new HttpErrors['403']('Bạn không có quyền truy cập.')
     }
@@ -214,11 +214,11 @@ export class ClassroomController {
     })
 
     const usersInClassroom: UserWithRole[] = []
-
+    const host = await this.userRepository.findById(classroom.hostId)
     // Thêm host vào danh sách
     usersInClassroom.push(
       new UserWithRole({
-        ...classroom.host,
+        ...host,
         userRole: ClassroomRole.HOST,
       }),
     )

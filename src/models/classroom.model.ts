@@ -51,9 +51,7 @@ export class Classroom extends TimeStampMixin(BaseEntity) {
 
   // Define well-known properties here
 
-  // Indexer property to allow additional data
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  [prop: string]: any
+
 
   constructor(data?: Partial<Classroom>) {
     super(data)

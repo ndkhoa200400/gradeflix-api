@@ -17,7 +17,7 @@ export class UserRepository extends TimeStampRepositoryMixin<
 >(DefaultCrudRepository) {
   public readonly classrooms: HasManyThroughRepositoryFactory<
     Classroom,
-    typeof Classroom.prototype.pid,
+    typeof Classroom.prototype.id,
     UserClassroom,
     typeof User.prototype.id
   >
