@@ -1,5 +1,5 @@
 import { authenticate } from '@loopback/authentication'
-import { User, UserServiceBindings } from '@loopback/authentication-jwt'
+import { UserServiceBindings } from '@loopback/authentication-jwt'
 import { Getter, inject } from '@loopback/core'
 import {
   Count,
@@ -14,14 +14,11 @@ import {
   param,
   get,
   getModelSchemaRef,
-  patch,
-  put,
-  del,
   requestBody,
   response,
   HttpErrors,
 } from '@loopback/rest'
-import { Classroom, SendInvitationRequest, UserClassroom } from '../models'
+import { Classroom, SendInvitationRequest } from '../models'
 import { ClassroomRepository, UserClassroomRepository, UserRepository } from '../repositories'
 import { EmailManager, IEmailRequest, MyUserService } from '../services'
 import { UserProfile, SecurityBindings } from '@loopback/security'
@@ -72,7 +69,9 @@ export class ClassroomController {
     const user = await this.userRepository.findById(getUser.id)
     classroom.hostId = user.id
     classroom.id = nanoid(8)
-    return this.classroomRepository.create(classroom)
+    const res = await this.classroomRepository.create(classroom)
+    const result = await this.classroomRepository.findById(res.id, {include:['host']})
+    return result
   }
 
   @get('/classrooms/count')
@@ -352,8 +351,8 @@ export class ClassroomController {
     })
     body: SendInvitationRequest,
   ): Promise<void> {
-    const user = await this.getCurrentUser()
-
+    const getUser = await this.getCurrentUser()
+    const user = await this.userRepository.findById(getUser.id)
     role = role ?? ClassroomRole.STUDENT
     if (role === ClassroomRole.HOST)
       throw new HttpErrors['403']('Bạn không thể thực hiện hành động này.')
@@ -372,7 +371,7 @@ export class ClassroomController {
     if (classroom.hostId !== user.id && !isTeacher) {
       throw new HttpErrors.Forbidden('Bạn không có quyền truy cập.')
     }
-
+    
     const invitee = `${user.fullname} (${user.email})`
 
     const subject = 'Lời mời tham gia lớp học'
