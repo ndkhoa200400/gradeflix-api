@@ -188,31 +188,42 @@ export class ClassroomController {
   })
   async findUsersOfClassroom(@param.path.string('id') id: string): Promise<UserWithRole[]> {
     const getUser = await this.getCurrentUser()
+    
+    // Kiểm tra xem user hiện tại có phải thành viên lớp hay ko
     const isParticipant = await this.userClassroomRepository.findOne({
       where: { classroomId: id, userId: getUser.id },
     })
+
+
     const classroom = await this.classroomRepository.findOne({
       where: {
-        hostId: getUser.id,
         classroomId: id,
       },
       include: ['host'],
     })
     if (!classroom) throw new HttpErrors['404']('Không tìm thấy lớp học')
-    if (!isParticipant && classroom.hostId !== getUser.id) {
+
+    const isHost = classroom.hostId === getUser.id
+    if (!isParticipant && !isHost) {
       throw new HttpErrors['403']('Bạn không có quyền truy cập.')
     }
+
+
     const userClassrooms = await this.userClassroomRepository.find({
       where: { classroomId: id },
       include: ['user'],
     })
+
     const usersInClassroom: UserWithRole[] = []
+
+    // Thêm host vào danh sách
     usersInClassroom.push(
       new UserWithRole({
         ...classroom.host,
         userRole: ClassroomRole.HOST,
       }),
     )
+
     // Tìm các thành viên trong lớp
     for (const userClassroom of userClassrooms) {
       const temp = new UserWithRole({
@@ -299,7 +310,7 @@ export class ClassroomController {
     if (role === ClassroomRole.HOST)
       throw new HttpErrors['403']('Bạn không thể thực hiện hành động này.')
     if (!(role in ClassroomRole)) throw new HttpErrors['400']('Vai trò không hợp lệ.')
-    
+
     const classroom = await this.classroomRepository.findById(classroomId)
     const userClassroom = await this.userClassroomRepository.findOne({
       where: { userId: user.id, classroomId: classroom.id },
@@ -347,7 +358,6 @@ export class ClassroomController {
     if (role === ClassroomRole.HOST)
       throw new HttpErrors['403']('Bạn không thể thực hiện hành động này.')
     if (!(role in ClassroomRole)) throw new HttpErrors['400']('Vai trò không hợp lệ.')
-  
 
     const classroom = await this.classroomRepository.findById(classroomId)
 
