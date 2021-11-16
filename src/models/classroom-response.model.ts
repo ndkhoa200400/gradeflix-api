@@ -13,6 +13,11 @@ export class UserWithRole extends User {
   })
   userRole?: ClassroomRole
 
+  @property({
+    type: 'string',
+  })
+  studentId?: string
+
   constructor(data?: Partial<Omit<UserWithRole, 'password'>>) {
     super(data)
   }

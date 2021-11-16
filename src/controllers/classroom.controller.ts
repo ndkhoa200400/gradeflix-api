@@ -229,6 +229,7 @@ export class ClassroomController {
       const temp = new UserWithRole({
         userRole: userClassroom.userRole,
         ...userClassroom.user,
+        studentId: userClassroom.studentId
       })
       usersInClassroom.push(temp)
     }
