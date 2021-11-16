@@ -172,6 +172,7 @@ export class ClassroomController {
       user: new UserWithRole({
         ...currentUser,
         userRole: isParticipant?.userRole ?? ClassroomRole.HOST,
+        studentId: isParticipant?.studentId,
       }),
     })
   }
@@ -188,12 +189,11 @@ export class ClassroomController {
   })
   async findUsersOfClassroom(@param.path.string('id') id: string): Promise<UserWithRole[]> {
     const getUser = await this.getCurrentUser()
-    
+
     // Kiểm tra xem user hiện tại có phải thành viên lớp hay ko
     const isParticipant = await this.userClassroomRepository.findOne({
       where: { classroomId: id, userId: getUser.id },
     })
-
 
     const classroom = await this.classroomRepository.findOne({
       where: {
@@ -207,7 +207,6 @@ export class ClassroomController {
     if (!isParticipant && !isHost) {
       throw new HttpErrors['403']('Bạn không có quyền truy cập.')
     }
-
 
     const userClassrooms = await this.userClassroomRepository.find({
       where: { classroomId: id },
@@ -229,7 +228,7 @@ export class ClassroomController {
       const temp = new UserWithRole({
         userRole: userClassroom.userRole,
         ...userClassroom.user,
-        studentId: userClassroom.studentId
+        studentId: userClassroom.studentId,
       })
       usersInClassroom.push(temp)
     }
@@ -270,7 +269,7 @@ export class ClassroomController {
       throw new HttpErrors.Unauthorized('Bạn không được quyền sửa thông tin lớp học.')
     }
     Object.assign(classroom, classroomBody)
-    return await this.classroomRepository.save(classroom)
+    return this.classroomRepository.save(classroom)
   }
 
   @authenticate('jwt')
