@@ -1,8 +1,8 @@
 import { model, property } from '@loopback/repository'
 
-import { Classroom, User } from '.'
-import { ClassroomRole } from '../constants/classroom-role'
-
+import { User } from '..'
+import { ClassroomRole } from '../../constants/classroom-role'
+import { Classroom } from '.'
 @model({ strict: true })
 export class UserWithRole extends User {
   @property({

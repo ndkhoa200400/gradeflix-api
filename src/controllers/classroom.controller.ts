@@ -23,11 +23,7 @@ import { ClassroomRepository, UserClassroomRepository, UserRepository } from '..
 import { EmailManager, IEmailRequest, MyUserService } from '../services'
 import { UserProfile, SecurityBindings } from '@loopback/security'
 import { ClassroomRole } from '../constants/classroom-role'
-import {
-  GetManyClassroomResponse,
-  GetOneClassroomResponse,
-  UserWithRole,
-} from '../models/classroom-response.model'
+import { GetManyClassroomResponse, GetOneClassroomResponse, UserWithRole } from '../models/'
 import { EmailManagerBindings } from '../keys'
 import { hashSha256 } from '../common/helpers'
 import { nanoid } from 'nanoid'
@@ -65,12 +61,17 @@ export class ClassroomController {
     })
     classroom: Classroom,
   ): Promise<Classroom> {
+    // Kiểm tra barem điểm có hợp lệ k
+    if (classroom.barem) {
+      const isBaremValid = this.validateBarem(classroom.barem)
+      if (!isBaremValid) throw new HttpErrors['400']('Barem điểm không hợp lệ!')
+    }
     const getUser = await this.getCurrentUser()
     const user = await this.userRepository.findById(getUser.id)
     classroom.hostId = user.id
     classroom.id = nanoid(8)
     const res = await this.classroomRepository.create(classroom)
-    const result = await this.classroomRepository.findById(res.id, {include:['host']})
+    const result = await this.classroomRepository.findById(res.id, { include: ['host'] })
     return result
   }
 
@@ -156,7 +157,13 @@ export class ClassroomController {
     const isParticipant = await this.userClassroomRepository.findOne({
       where: { classroomId: id, userId: getUser.id },
     })
-    const classroom = await this.classroomRepository.findById(id, filter)
+    const classroom = await this.classroomRepository.findOne({
+      where:{
+        id: id
+      },
+      ...filter
+    })
+    if (!classroom) throw new HttpErrors['404']('Không tìm thấy lớp học')
 
     const isHost = classroom.hostId === getUser.id
 
@@ -255,7 +262,13 @@ export class ClassroomController {
     })
     classroomBody: Classroom,
   ): Promise<Classroom> {
-    const classroom = await this.classroomRepository.findById(id)
+  
+    const classroom = await this.classroomRepository.findOne({
+      where:{
+        id: id
+      }
+    })
+    if (!classroom) throw new HttpErrors['404']('Không tìm thấy lớp học')
     const getUser = await this.getCurrentUser()
     const isTeacher = await this.userClassroomRepository.findOne({
       where: {
@@ -266,6 +279,10 @@ export class ClassroomController {
     })
     if (classroom.hostId !== getUser.id && !isTeacher) {
       throw new HttpErrors.Unauthorized('Bạn không được quyền sửa thông tin lớp học.')
+    }
+    if (classroomBody.barem) {
+      const isBaremValid = this.validateBarem(classroomBody.barem)
+      if (!isBaremValid) throw new HttpErrors['400']('Barem điểm không hợp lệ!')
     }
     Object.assign(classroom, classroomBody)
     return this.classroomRepository.save(classroom)
@@ -282,7 +299,12 @@ export class ClassroomController {
     const getUser = await this.getCurrentUser()
     const user = await this.userRepository.findById(getUser.id)
 
-    const classroom = await this.classroomRepository.findById(classroomId)
+    const classroom = await this.classroomRepository.findOne({
+      where:{
+        id: classroomId
+      }
+    })
+    if (!classroom) throw new HttpErrors['404']('Không tìm thấy lớp học')
     const userClassroom = await this.userClassroomRepository.findOne({
       where: { userId: user.id, classroomId: classroom.id },
     })
@@ -310,7 +332,8 @@ export class ClassroomController {
       throw new HttpErrors['403']('Bạn không thể thực hiện hành động này.')
     if (!(role in ClassroomRole)) throw new HttpErrors['400']('Vai trò không hợp lệ.')
 
-    const classroom = await this.classroomRepository.findById(classroomId)
+    const classroom = await this.classroomRepository.findOne({where:{id:classroomId}})
+    if (!classroom) throw new HttpErrors['404']('Không tìm thấy lớp học')
     const userClassroom = await this.userClassroomRepository.findOne({
       where: { userId: user.id, classroomId: classroom.id },
     })
@@ -371,7 +394,7 @@ export class ClassroomController {
     if (classroom.hostId !== user.id && !isTeacher) {
       throw new HttpErrors.Forbidden('Bạn không có quyền truy cập.')
     }
-    
+
     const invitee = `${user.fullname} (${user.email})`
 
     const subject = 'Lời mời tham gia lớp học'
@@ -406,5 +429,25 @@ export class ClassroomController {
         console.log('error when sending invitation', error)
       }
     }
+  }
+
+  validateBarem(barem: Record<string, string>) {
+    const regex = new RegExp(/^\d+(\.\d+)?%$/)
+    let total = 0
+    if (!('total' in barem) ) throw new HttpErrors['400']('Trong thang điểm phải có tổng tối đa.')
+    for (const section in barem) {
+      if (section ==='total') {
+        const point = parseFloat(barem[section])
+        if (point <= 0) throw new HttpErrors['400']('Điểm tối đa phải lớn hơn 0.')
+        continue
+      } 
+      if (!regex.test(barem[section])) return false
+      const point = parseFloat(barem[section])
+      if (point <= 0) throw new HttpErrors['400']('Điểm phải lớn hơn 0.')
+      total += point
+    }
+    if (total !== 100) return false
+
+    return true
   }
 }

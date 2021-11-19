@@ -1,8 +1,8 @@
 import { User } from '@loopback/authentication-jwt'
 import { belongsTo, model, property } from '@loopback/repository'
 
-import { BaseEntity } from '../common/models/base-entity.model'
-import { TimeStampMixin } from '../mixins'
+import { BaseEntity } from '../../common/models/base-entity.model'
+import { TimeStampMixin } from '../../mixins'
 
 @model({
   settings: {
@@ -49,8 +49,13 @@ export class Classroom extends TimeStampMixin(BaseEntity) {
   @belongsTo(() => User, { name: 'host' })
   hostId: number;
 
-  // Define well-known properties here
-
+  @property({
+    type:'object',
+    postgresql:{
+      dataType: 'jsonb'
+    }
+  })
+  barem?: Record<string, string>
 
 
   constructor(data?: Partial<Classroom>) {
