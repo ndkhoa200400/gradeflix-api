@@ -1,0 +1,12 @@
+email,classroomName,userRole,emailHost,studentId
+nguyendangkhoa2000@gmail.com,Lớp lá,TEACHER,18127121@student.hcmus.edu.vn
+lydanghuy2000@gmail.com,Lớp chồi,TEACHER,18127121@student.hcmus.edu.vn
+lyduynam2000@gmail.com,Lớp chồi,TEACHER,18127121@student.hcmus.edu.vn
+lydanghuy2000@gmail.com,Hướng đối tượng,OOP và SOLID,TEACHER,endeka2ka@gmail.com
+hocvien1@gmail.com,Hướng đối tượng,OOP và SOLID,STUDENT,endeka2ka@gmail.com,1234
+hocvien2@gmail.com,Lớp chồi,STUDENT,18127121@student.hcmus.edu.vn,1235
+hocvien3@gmail.com,Lớp chồi,STUDENT,18127121@student.hcmus.edu.vn,1236
+nguyendangkhoa2000@gmail.com,Toán 12A,TEACHER,lydanghuy2000@gmail.com
+hocvien1@gmail.com,Lớp lá,OOP và SOLID,STUDENT,18127121@student.hcmus.edu.vn,1234
+hocvien2@gmail.com,Lớp lá,STUDENT,18127121@student.hcmus.edu.vn,1235
+hocvien3@gmail.com,Toán 12A,STUDENT,lydanghuy2000@gmail.com,1236

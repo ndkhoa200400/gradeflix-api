@@ -122,9 +122,10 @@ export class ClassroomController {
       })
       result.push(temp)
     }
-
+    
     // find classrooms that user participated
     for (const userClassroom of userClassrooms) {
+      
       const temp = new GetManyClassroomResponse({
         ...userClassroom.classroom,
         user: new UserWithRole({
@@ -274,7 +275,7 @@ export class ClassroomController {
       where: {
         userId: getUser.id,
         classroomId: classroom.id,
-        role: ClassroomRole.TEACHER,
+        userRole: ClassroomRole.TEACHER,
       },
     })
     if (classroom.hostId !== getUser.id && !isTeacher) {
