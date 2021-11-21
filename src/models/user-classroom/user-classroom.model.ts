@@ -8,7 +8,7 @@ import { TimeStampMixin } from '../../mixins'
   settings: {
     strict: true,
     indexes: {
-      compositeKeyUserClassroom: {
+      composite_key_userclassroom: {
         keys: {
           userId: 1,
           classroomId: 1,
@@ -17,7 +17,7 @@ import { TimeStampMixin } from '../../mixins'
           unique: true,
         },
       },
-      compositeKeyStudentIdClassroomId: {
+      composite_key_studentid_classroomid: {
         keys: {
           classroomId: 1,
           studentId: 1,

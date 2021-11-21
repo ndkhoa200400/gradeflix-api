@@ -1,5 +1,6 @@
 import { User } from '@loopback/authentication-jwt'
 import { belongsTo, model, property } from '@loopback/repository'
+import { GradeStructure } from '.'
 
 import { BaseEntity } from '../../common/models/base-entity.model'
 import { TimeStampMixin } from '../../mixins'
@@ -47,16 +48,15 @@ export class Classroom extends TimeStampMixin(BaseEntity) {
   room?: string
 
   @belongsTo(() => User, { name: 'host' })
-  hostId: number;
+  hostId: number
 
   @property({
-    type:'object',
-    postgresql:{
-      dataType: 'jsonb'
-    }
+    type: 'object',
+    postgresql: {
+      dataType: 'jsonb',
+    },
   })
-  barem?: Record<string, string>
-
+  gradeStructure?: GradeStructure
 
   constructor(data?: Partial<Classroom>) {
     super(data)
