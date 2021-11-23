@@ -268,7 +268,7 @@ export class ClassroomController {
     })
 
     if (!classroom) throw new HttpErrors['404']('Không tìm thấy lớp học')
-    
+
     const getUser = await this.getCurrentUser()
     const isTeacher = await this.userClassroomRepository.findOne({
       where: {
@@ -288,15 +288,12 @@ export class ClassroomController {
     return this.classroomRepository.save(classroom)
   }
 
-
   @authenticate('jwt')
   @post('/classrooms/{id}/grade-structure/delete')
   @response(204, {
     description: 'Classroom PATCH success',
   })
-  async deleteGrade(
-    @param.path.string('id') id: string,
-  ): Promise<Classroom> {
+  async deleteGrade(@param.path.string('id') id: string): Promise<Classroom> {
     const classroom = await this.classroomRepository.findOne({
       where: {
         id: id,
@@ -304,7 +301,7 @@ export class ClassroomController {
     })
 
     if (!classroom) throw new HttpErrors['404']('Không tìm thấy lớp học')
-    
+
     const getUser = await this.getCurrentUser()
     const isTeacher = await this.userClassroomRepository.findOne({
       where: {
@@ -317,7 +314,6 @@ export class ClassroomController {
     if (classroom.hostId !== getUser.id && !isTeacher) {
       throw new HttpErrors.Unauthorized('Bạn không được quyền sửa thông tin lớp học.')
     }
-
 
     classroom.gradeStructure = undefined
     return this.classroomRepository.save(classroom)
@@ -511,16 +507,18 @@ export class ClassroomController {
   }
 
   validateParem(grade: GradeStructure) {
-    const regex = new RegExp(/^\d+(\.\d+)?%$/)
     let total = 0
-    if (Number(grade.total) < 1) throw new HttpErrors['400']('Tổng điểm phải lớn hơn 0')
+    if (!Number(grade.total) || Number(grade.total) < 1)
+      throw new HttpErrors['400']('Tổng điểm phải lớn hơn 0')
+
     for (const parem of grade.parems) {
-      if (!regex.test(parem.percent))
+      if (!Number(parem.percent))
         throw new HttpErrors['400']('Định dạng thang điểm không hợp lệ')
       const percent = parseFloat(parem.percent)
       if (percent < 1) throw new HttpErrors['400']('Thang điểm phải lớn hơn 0')
       total += parseFloat(parem.percent)
     }
+
     if (total !== 100) throw new HttpErrors['400']('Tổng thang điểm phải đạt 100%')
 
     return true
