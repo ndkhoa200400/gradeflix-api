@@ -1,6 +1,6 @@
 import { authenticate } from '@loopback/authentication'
 import { UserServiceBindings } from '@loopback/authentication-jwt'
-import { Getter, inject } from '@loopback/core'
+import { Getter, inject, intercept } from '@loopback/core'
 import {
   Count,
   CountSchema,
@@ -18,7 +18,7 @@ import {
   response,
   HttpErrors,
 } from '@loopback/rest'
-import { Classroom, GradeStructure, Parem, SendInvitationRequest } from '../models'
+import { Classroom, GradeStructure, SendInvitationRequest } from '../models'
 import { ClassroomRepository, UserClassroomRepository, UserRepository } from '../repositories'
 import { EmailManager, IEmailRequest, MyUserService } from '../services'
 import { UserProfile, SecurityBindings } from '@loopback/security'
@@ -27,6 +27,8 @@ import { GetManyClassroomResponse, GetOneClassroomResponse, UserWithRole } from 
 import { EmailManagerBindings } from '../keys'
 import { hashSha256 } from '../common/helpers'
 import { nanoid } from 'nanoid'
+import { AuthenRoleClassroomInterceptor } from '../interceptors/authen-role-classroom.interceptor'
+import { CheckJoinClassroomInterceptor } from '../interceptors/check-join-classroom.interceptor'
 export class ClassroomController {
   constructor(
     @repository(ClassroomRepository)
@@ -138,6 +140,7 @@ export class ClassroomController {
   }
 
   @authenticate('jwt')
+  @intercept(CheckJoinClassroomInterceptor.BINDING_KEY)
   @get('/classrooms/{id}')
   @response(200, {
     description: 'Classroom model instance',
@@ -154,22 +157,11 @@ export class ClassroomController {
     filter = filter ?? {}
     const getUser = await this.getCurrentUser()
 
-    const isParticipant = await this.userClassroomRepository.findOne({
+    const userClassroom = await this.userClassroomRepository.findOne({
       where: { classroomId: id, userId: getUser.id },
     })
-    const classroom = await this.classroomRepository.findOne({
-      where: {
-        id: id,
-      },
-      ...filter,
-    })
-    if (!classroom) throw new HttpErrors['404']('Không tìm thấy lớp học')
 
-    const isHost = classroom.hostId === getUser.id
-
-    if (!isParticipant && !isHost) {
-      throw new HttpErrors['400']('Bạn không phải là thành viên của lớp.')
-    }
+    const classroom = await this.classroomRepository.findById(id, filter)
 
     const currentUser = await this.userRepository.findById(getUser.id)
 
@@ -177,13 +169,14 @@ export class ClassroomController {
       ...classroom,
       user: new UserWithRole({
         ...currentUser,
-        userRole: isParticipant?.userRole ?? ClassroomRole.HOST,
-        studentId: isParticipant?.studentId,
+        userRole: userClassroom?.userRole ?? ClassroomRole.HOST,
+        studentId: userClassroom?.studentId,
       }),
     })
   }
 
   @authenticate('jwt')
+  @intercept(CheckJoinClassroomInterceptor.BINDING_KEY)
   @get('/classrooms/{id}/users')
   @response(200, {
     description: 'Classroom model instance',
@@ -194,25 +187,7 @@ export class ClassroomController {
     },
   })
   async findUsersOfClassroom(@param.path.string('id') id: string): Promise<UserWithRole[]> {
-    const getUser = await this.getCurrentUser()
-
-    // Kiểm tra xem user hiện tại có phải thành viên lớp hay ko
-    const isParticipant = await this.userClassroomRepository.findOne({
-      where: { classroomId: id, userId: getUser.id },
-    })
-
-    const classroom = await this.classroomRepository.findOne({
-      where: {
-        id: id,
-      },
-    })
-    if (!classroom) throw new HttpErrors['404']('Không tìm thấy lớp học')
-
-    const isHost = classroom.hostId === getUser.id
-
-    if (!isParticipant && !isHost) {
-      throw new HttpErrors['403']('Bạn không có quyền truy cập.')
-    }
+    const classroom = await this.classroomRepository.findById(id)
 
     const userClassrooms = await this.userClassroomRepository.find({
       where: { classroomId: id },
@@ -244,6 +219,7 @@ export class ClassroomController {
   }
 
   @authenticate('jwt')
+  @intercept(AuthenRoleClassroomInterceptor.BINDING_KEY)
   @post('/classrooms/{id}/grade-structure')
   @response(204, {
     description: 'Classroom PATCH success',
@@ -268,20 +244,6 @@ export class ClassroomController {
     })
 
     if (!classroom) throw new HttpErrors['404']('Không tìm thấy lớp học')
-
-    const getUser = await this.getCurrentUser()
-    const isTeacher = await this.userClassroomRepository.findOne({
-      where: {
-        userId: getUser.id,
-        classroomId: classroom.id,
-        userRole: ClassroomRole.TEACHER,
-      },
-    })
-
-    if (classroom.hostId !== getUser.id && !isTeacher) {
-      throw new HttpErrors.Unauthorized('Bạn không được quyền sửa thông tin lớp học.')
-    }
-
     this.validateParem(grade)
 
     classroom.gradeStructure = grade
@@ -289,6 +251,7 @@ export class ClassroomController {
   }
 
   @authenticate('jwt')
+  @intercept(AuthenRoleClassroomInterceptor.BINDING_KEY)
   @post('/classrooms/{id}/grade-structure/delete')
   @response(204, {
     description: 'Classroom PATCH success',
@@ -301,26 +264,13 @@ export class ClassroomController {
     })
 
     if (!classroom) throw new HttpErrors['404']('Không tìm thấy lớp học')
-
-    const getUser = await this.getCurrentUser()
-    const isTeacher = await this.userClassroomRepository.findOne({
-      where: {
-        userId: getUser.id,
-        classroomId: classroom.id,
-        userRole: ClassroomRole.TEACHER,
-      },
-    })
-
-    if (classroom.hostId !== getUser.id && !isTeacher) {
-      throw new HttpErrors.Unauthorized('Bạn không được quyền sửa thông tin lớp học.')
-    }
-
     classroom.gradeStructure = undefined
     return this.classroomRepository.save(classroom)
   }
 
   @authenticate('jwt')
   @post('/classrooms/{id}')
+  @intercept(AuthenRoleClassroomInterceptor.BINDING_KEY)
   @response(204, {
     description: 'Classroom PATCH success',
   })
@@ -433,6 +383,7 @@ export class ClassroomController {
   }
 
   @authenticate('jwt')
+  @intercept(AuthenRoleClassroomInterceptor.BINDING_KEY)
   @post('/classrooms/{classroomId}/send-invitation/')
   @response(204, {
     description: 'Send invitation by email',
@@ -457,18 +408,6 @@ export class ClassroomController {
     if (!(role in ClassroomRole)) throw new HttpErrors['400']('Vai trò không hợp lệ.')
 
     const classroom = await this.classroomRepository.findById(classroomId)
-
-    const isTeacher = await this.userClassroomRepository.findOne({
-      where: {
-        userId: user.id,
-        classroomId: classroom.id,
-        userRole: ClassroomRole.TEACHER,
-      },
-    })
-    // authorize user if user is teacher or host
-    if (classroom.hostId !== user.id && !isTeacher) {
-      throw new HttpErrors.Forbidden('Bạn không có quyền truy cập.')
-    }
 
     const invitee = `${user.fullname} (${user.email})`
 
@@ -506,21 +445,23 @@ export class ClassroomController {
     }
   }
 
+  /**
+   *
+   * @param grade grade structure of a classroom
+   * @returns pass if grade is valid, throw exception if not
+   */
   validateParem(grade: GradeStructure) {
     let total = 0
     if (!Number(grade.total) || Number(grade.total) < 1)
       throw new HttpErrors['400']('Tổng điểm phải lớn hơn 0')
 
     for (const parem of grade.parems) {
-      if (!Number(parem.percent))
-        throw new HttpErrors['400']('Định dạng thang điểm không hợp lệ')
+      if (!Number(parem.percent)) throw new HttpErrors['400']('Định dạng thang điểm không hợp lệ')
       const percent = parseFloat(parem.percent)
       if (percent < 1) throw new HttpErrors['400']('Thang điểm phải lớn hơn 0')
       total += parseFloat(parem.percent)
     }
 
     if (total !== 100) throw new HttpErrors['400']('Tổng thang điểm phải đạt 100%')
-
-    return true
   }
 }

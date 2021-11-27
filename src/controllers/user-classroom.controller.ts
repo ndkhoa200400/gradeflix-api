@@ -1,6 +1,6 @@
 import { authenticate } from '@loopback/authentication'
 import { UserServiceBindings } from '@loopback/authentication-jwt'
-import { Getter, inject } from '@loopback/core'
+import { Getter, inject, intercept } from '@loopback/core'
 import { repository } from '@loopback/repository'
 import { post, param, getModelSchemaRef, requestBody, response, HttpErrors } from '@loopback/rest'
 import { UpdateStudentidRequest } from '../models'
@@ -8,6 +8,7 @@ import { ClassroomRepository, UserClassroomRepository, UserRepository } from '..
 import { MyUserService } from '../services'
 import { UserProfile, SecurityBindings } from '@loopback/security'
 import { ClassroomRole } from '../constants/classroom-role'
+import { AuthenRoleClassroomInterceptor } from '../interceptors'
 export class UserClassroomController {
   constructor(
     @repository(ClassroomRepository)
@@ -23,12 +24,13 @@ export class UserClassroomController {
   ) {}
 
   @authenticate('jwt')
-  @post('/classrooms/{classroomId}/users/{userId}/')
+  @post('/classrooms/{id}/users/{userId}/')
   @response(204, {
     description: 'Student ID changes successfully',
   })
+  @intercept(AuthenRoleClassroomInterceptor.BINDING_KEY)
   async changeStudentInfo(
-    @param.path.string('classroomId') classroomId: string,
+    @param.path.string('id') classroomId: string,
     @param.path.number('userId') userId: number,
     @requestBody({
       content: {
@@ -46,13 +48,6 @@ export class UserClassroomController {
     // user who calls this api
     const getUser = await this.getCurrentUser()
 
-    const isTeacher = await this.userClassroomRepository.findOne({
-      where: {
-        userId: getUser.id,
-        userRole: ClassroomRole.TEACHER,
-        classroomId: classroomId,
-      },
-    })
     // student that is changed student id
     const student = await this.userClassroomRepository.findOne({
       where: {
@@ -62,12 +57,6 @@ export class UserClassroomController {
       },
     })
 
-    const isHost = classroom.hostId === getUser.id
-
-    // check if the user uses this route is not host or teacher or own this userid
-    if (!isTeacher && !isHost && (!student || student.userId !== getUser.id)) {
-      throw new HttpErrors.Forbidden('Bạn không có quyền thay đổi thông tin.')
-    }
     if (!student) throw new HttpErrors.NotFound('Không tìm thấy sinh viên trong lớp học này.')
 
     const isStudentIdExisted = await this.userClassroomRepository.findOne({
@@ -106,6 +95,7 @@ export class UserClassroomController {
   }
 
   @authenticate('jwt')
+  @intercept(AuthenRoleClassroomInterceptor.BINDING_KEY)
   @post('/classrooms/{classroomId}/users/{userId}/kick')
   @response(204, {
     description: 'Kick out one user',
@@ -120,14 +110,6 @@ export class UserClassroomController {
     const getUser = await this.getCurrentUser()
     if (getUser.id === userId) throw new HttpErrors['400']('Không thể tự mời mình ra khỏi lớp.')
 
-    const isTeacher = await this.userClassroomRepository.findOne({
-      where: {
-        userId: getUser.id,
-        userRole: ClassroomRole.TEACHER,
-        classroomId: classroomId,
-      },
-    })
-
     // user that is kicked
     const user = await this.userClassroomRepository.findOne({
       where: {
@@ -135,14 +117,10 @@ export class UserClassroomController {
         classroomId: classroomId,
       },
     })
+    if (!user) throw new HttpErrors.NotFound('Không tìm thấy thành viên này.')
 
     const isHost = classroom.hostId === getUser.id
 
-    // check if the user uses this route is not host or teacher
-    if (!isTeacher && !isHost) {
-      throw new HttpErrors.Forbidden('Bạn không có quyền thực hiện hành động này.')
-    }
-    if (!user) throw new HttpErrors.NotFound('Không tìm thấy thành viên này.')
     if (user.userRole === ClassroomRole.TEACHER) {
       if (!isHost) throw new HttpErrors.Forbidden('Bạn không có quyền thực hiện hành động này.')
     }
