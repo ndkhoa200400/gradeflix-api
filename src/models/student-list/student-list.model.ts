@@ -8,10 +8,8 @@ import { TimeStampMixin } from '../../mixins'
 @model({
   settings: {
     indexes: {
-      student_list_student_id: {
+      compositekey_studentid_classroomid: {
         studentId: 1,
-      },
-      classroom_id: {
         classroomId: 1,
       },
     },
