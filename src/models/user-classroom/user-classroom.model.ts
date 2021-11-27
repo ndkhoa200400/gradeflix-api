@@ -1,3 +1,4 @@
+/* eslint-disable @typescript-eslint/naming-convention */
 import { belongsTo, model, property } from '@loopback/repository'
 import { Classroom, User } from '..'
 import { BaseEntity } from '../../common/models/base-entity.model'

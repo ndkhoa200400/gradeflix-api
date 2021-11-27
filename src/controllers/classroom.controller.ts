@@ -112,11 +112,10 @@ export class ClassroomController {
     })
     filter.where = { ...filter.where, hostId: user.id }
     const hostedClassrooms = await this.classroomRepository.find(filter)
-    // const result = hostedClassrooms.concat(participatedClassrooms)
 
-    // return result
     const result: GetManyClassroomResponse[] = []
-    // find classrooms that user is host
+
+    // find classrooms that current user is the host
     for (const hostedClassroom of hostedClassrooms) {
       const temp = new GetManyClassroomResponse({
         ...hostedClassroom,
@@ -125,7 +124,7 @@ export class ClassroomController {
       result.push(temp)
     }
 
-    // find classrooms that user participated
+    // find classrooms that user has joined
     for (const userClassroom of userClassrooms) {
       const temp = new GetManyClassroomResponse({
         ...userClassroom.classroom,
@@ -154,7 +153,7 @@ export class ClassroomController {
     @param.path.string('id') id: string,
     @param.filter(Classroom, { exclude: 'where' }) filter?: FilterExcludingWhere<Classroom>,
   ): Promise<GetManyClassroomResponse> {
-    filter = filter ?? {}
+    filter = filter ?? {} as FilterExcludingWhere<Classroom>
     const getUser = await this.getCurrentUser()
 
     const userClassroom = await this.userClassroomRepository.findOne({

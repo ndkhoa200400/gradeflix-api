@@ -1,6 +1,7 @@
 import { User } from '@loopback/authentication-jwt'
-import { belongsTo, model, property } from '@loopback/repository'
+import { belongsTo, hasMany, model, property } from '@loopback/repository'
 import { GradeStructure } from '.'
+import { StudentList } from '..'
 
 import { BaseEntity } from '../../common/models/base-entity.model'
 import { TimeStampMixin } from '../../mixins'
@@ -57,6 +58,9 @@ export class Classroom extends TimeStampMixin(BaseEntity) {
     },
   })
   gradeStructure?: GradeStructure
+
+  @hasMany(() => StudentList)
+  studentList: StudentList[]
 
   constructor(data?: Partial<Classroom>) {
     super(data)

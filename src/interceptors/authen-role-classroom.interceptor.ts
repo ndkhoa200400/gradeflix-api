@@ -10,7 +10,7 @@ import {
   ValueOrPromise,
 } from '@loopback/core'
 import { UserProfile, SecurityBindings } from '@loopback/security'
-import { RestBindings, Request, HttpErrors } from '@loopback/rest'
+import { HttpErrors } from '@loopback/rest'
 import { repository } from '@loopback/repository'
 import { ClassroomRepository, UserClassroomRepository, UserRepository } from '../repositories'
 import { ClassroomRole } from '../constants/classroom-role'
@@ -26,7 +26,6 @@ export class AuthenRoleClassroomInterceptor implements Provider<Interceptor> {
   static readonly BINDING_KEY = `interceptors.${AuthenRoleClassroomInterceptor.name}`
 
   constructor(
-    @inject(RestBindings.Http.REQUEST) private request: Request,
     @inject.getter(SecurityBindings.USER, { optional: true })
     private getCurrentUser: Getter<UserProfile>,
     @repository(ClassroomRepository)

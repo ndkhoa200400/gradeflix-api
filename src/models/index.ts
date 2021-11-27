@@ -1,5 +1,6 @@
 export * from './migration.model'
 export * from './user'
 export * from './email'
+export * from './student-list'
 export * from './classroom'
 export * from './user-classroom'

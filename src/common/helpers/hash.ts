@@ -1,5 +1,4 @@
 import crypto from 'crypto'
-import _md5 from 'md5'
 
 // create hash
 const hashSha256 = (text: string) => {
