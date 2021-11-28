@@ -56,7 +56,7 @@ export class AuthenRoleClassroomInterceptor implements Provider<Interceptor> {
       // Add pre-invocation logic here
       const  id  = invocationCtx.args[0]  // classroomid is the first arg from invocationCtx
       const getUser = await this.getCurrentUser()
-      const result = await next()
+    
 
       const classroom = await this.classroomRepository.findOne({
         where: {
@@ -77,6 +77,7 @@ export class AuthenRoleClassroomInterceptor implements Provider<Interceptor> {
         throw new HttpErrors.Forbidden('Bạn không có quyền thực hiện hành động này.')
       }
       // Add post-invocation logic here
+      const result = await next()
       return result
     } catch (err) {
       // Add error handling logic here

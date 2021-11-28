@@ -13,7 +13,7 @@ import {
   Response,
   HttpErrors,
 } from '@loopback/rest'
-import { Grades, StudentList } from '../models'
+import { Grades, GradeStructure, StudentList } from '../models'
 import {
   ClassroomRepository,
   GradesRepository,
@@ -47,6 +47,24 @@ export class StudentListController {
     private getCurrentUser: Getter<UserProfile>,
     @inject(FILE_UPLOAD_SERVICE) private handler: RequestHandler,
   ) {}
+
+  @intercept(AuthenRoleClassroomInterceptor.BINDING_KEY)
+  @get('/classrooms/{id}/student-list')
+  @response(200, {
+    description: 'Update student list',
+  })
+  async find(
+    @param.path.string('id') classroomId: string,
+    @param.filter(StudentList) filter?: Filter<StudentList>,
+  ): Promise<StudentList[]> {
+    filter = filter ?? ({} as Filter<StudentList>)
+
+    filter.include = [...(filter.include ?? []), 'grades']
+    filter.where = { ...filter.where, classroomId: classroomId }
+    const studentList = await this.studentListRepository.find(filter)
+
+    return studentList
+  }
 
   @intercept(AuthenRoleClassroomInterceptor.BINDING_KEY)
   @post('/classrooms/{id}/student-list')
@@ -231,7 +249,7 @@ export class StudentListController {
     const scale = gradeStructure.parems.find(parem => parem.name === gradeName)
     if (!scale) throw new HttpErrors['400'](`Thang điểm ${gradeName} không tồn tại.`)
 
-    // Validate whether classroom has student list or not
+    // Validate whether classroom has a student list or not
     const studentListCount = await this.studentListRepository.count({
       classroomId: classroomId,
     })
@@ -260,7 +278,9 @@ export class StudentListController {
           name: gradeName,
         },
       })
+
       this.validateGrade(studentInfo[1])
+
       if (grade) {
         if (grade.grade !== studentInfo[1]) {
           grade.grade = studentInfo[1]
@@ -285,24 +305,18 @@ export class StudentListController {
       },
       include: ['grades'],
     })
-    return studentList
-  }
 
-  @intercept(AuthenRoleClassroomInterceptor.BINDING_KEY)
-  @get('/classrooms/{id}/student-list')
-  @response(200, {
-    description: 'Update student list',
-  })
-  async find(
-    @param.path.string('id') classroomId: string,
-    @param.filter(StudentList) filter?: Filter<StudentList>,
-  ): Promise<StudentList[]> {
-    filter = filter ?? ({} as Filter<StudentList>)
+    // Calculate the total when students have enough columns of gradeStructure
+    for (const student of studentList) {
+      if (student.grades.length === gradeStructure.parems.length) {
+        const total = this.calculateTotal(student.grades, gradeStructure).toString()
 
-    filter.include = [...(filter.include ?? []), 'grades']
-    filter.where = { ...filter.where, classroomId: classroomId }
-    const studentList = await this.studentListRepository.find(filter)
-
+        if (total !== student.total) {
+          student.total = total
+          await this.studentListRepository.updateById(student.id, { total: student.total })
+        }
+      }
+    }
     return studentList
   }
 
@@ -350,5 +364,19 @@ export class StudentListController {
     }
 
     return data
+  }
+
+  private calculateTotal(grades: Grades[], gradeStructure: GradeStructure) {
+    let total = 0
+
+    for (const grade of grades) {
+      const parem = gradeStructure.parems.find(p => p.name === grade.name)
+      const g = Number(grade.grade)
+
+      if (!g || !parem) continue
+      total += (g * Number(parem.percent)) / 100
+    }
+
+    return (total*Number(gradeStructure.total)/10).toFixed(2)
   }
 }

@@ -39,6 +39,12 @@ export class StudentList extends TimeStampMixin(BaseEntity) {
   @hasMany(() => Grades)
   grades: Grades[]
 
+  @property({
+    type: 'string',
+    default: '0',
+  })
+  total: string
+
   constructor(data?: Partial<StudentList>) {
     super(data)
   }
