@@ -28,6 +28,8 @@ import { FILE_UPLOAD_SERVICE } from '../keys'
 import { RequestHandler } from 'express-serve-static-core'
 import _ from 'lodash'
 import * as XLSX from 'xlsx'
+import { CheckJoinClassroomInterceptor } from '../interceptors/check-join-classroom.interceptor'
+
 @authenticate('jwt')
 export class StudentListController {
   constructor(
@@ -62,6 +64,26 @@ export class StudentListController {
     filter.include = [...(filter.include ?? []), 'grades']
     filter.where = { ...filter.where, classroomId: classroomId }
     const studentList = await this.studentListRepository.find(filter)
+
+    return studentList
+  }
+
+  @intercept(CheckJoinClassroomInterceptor.BINDING_KEY)
+  @get('/classrooms/{classroomId}/student-list/{studentId}/grades')
+  @response(200, {
+    description: 'Update student list',
+  })
+  async getStudentGrade(
+    @param.path.string('classroomId') classroomId: string,
+    @param.path.string('studentId') studentId: string,
+  ): Promise<StudentList | null> {
+    const studentList = await this.studentListRepository.findOne({
+      where: {
+        classroomId: classroomId,
+        studentId: studentId,
+      },
+      include: ['grades'],
+    })
 
     return studentList
   }
@@ -377,6 +399,6 @@ export class StudentListController {
       total += (g * Number(parem.percent)) / 100
     }
 
-    return (total*Number(gradeStructure.total)/10).toFixed(2)
+    return ((total * Number(gradeStructure.total)) / 10).toFixed(2)
   }
 }
