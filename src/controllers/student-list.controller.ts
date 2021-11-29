@@ -29,6 +29,7 @@ import { RequestHandler } from 'express-serve-static-core'
 import _ from 'lodash'
 import * as XLSX from 'xlsx'
 import { CheckJoinClassroomInterceptor } from '../interceptors/check-join-classroom.interceptor'
+import { StudentListHeaders } from '../constants/student-list-header'
 
 @authenticate('jwt')
 export class StudentListController {
@@ -122,7 +123,7 @@ export class StudentListController {
       data là mảng 2 chiều, phần tử là một mảng 2 phần tử gồm mssv và họ tên
       Phần tử đầu là headers
       [
-        ['studentId', 'fullName'],
+        ['Mã số sinh viên', 'Họ và tên'],
         ['123456', 'hs1']
       ]
     */
@@ -132,7 +133,10 @@ export class StudentListController {
 
     // validate headers
     const headers = data[0]
-    if (!headers.includes('studentId') || !headers.includes('fullname'))
+    if (
+      !headers.includes(StudentListHeaders.STUDENT_ID) ||
+      !headers.includes(StudentListHeaders.FULLNAME)
+    )
       throw new HttpErrors['400']('Định dạng file không đúng. Vui lòng kiểm tra lại.')
 
     const promiseAll: Promise<StudentList>[] = []
@@ -248,7 +252,7 @@ export class StudentListController {
       data là mảng 2 chiều, phần tử là một mảng 2 phần tử gồm mssv và điểm số
       Phần tử đầu là headers
       [
-        ['studentId', 'grades'],
+        ['Mã số sinh viên', 'Điểm'],
         ['123456', '8']
       ]
     */
@@ -259,7 +263,10 @@ export class StudentListController {
 
     // validate headers
     const headers = data[0]
-    if (headers.length !== 2 || !headers.includes('studentId') || !headers.includes('grades'))
+    if (
+      !headers.includes(StudentListHeaders.STUDENT_ID) ||
+      !headers.includes(StudentListHeaders.GRADE)
+    )
       throw new HttpErrors['400']('Định dạng file không đúng. Vui lòng kiểm tra lại.')
 
     // validate whether gradeName exists in gradeStructure
