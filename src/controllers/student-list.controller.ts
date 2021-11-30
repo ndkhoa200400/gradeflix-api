@@ -13,7 +13,7 @@ import {
   Response,
   HttpErrors,
 } from '@loopback/rest'
-import { Grades, GradeStructure, StudentList, UploadGradesResponse } from '../models'
+import { Grades, GradeStructure, StudentList, UploadFileResponse } from '../models'
 import {
   ClassroomRepository,
   GradesRepository,
@@ -97,7 +97,7 @@ export class StudentListController {
     @requestBody.file()
     body: Request,
     @inject(RestBindings.Http.RESPONSE) res: Response,
-  ): Promise<StudentList[]> {
+  ): Promise<UploadFileResponse> {
     // Processing files from request body
     await new Promise<object>((resolve, reject) => {
       this.handler(body, res, (err: unknown) => {
@@ -139,13 +139,15 @@ export class StudentListController {
 
     const promiseAll: Promise<StudentList>[] = []
     const studentListCreation: StudentList[] = []
-
+    const errorList: string[] = []
     for (let i = 1; i < data.length; i++) {
       const studentInfo = data[i]
 
       // Missing information
-      if (studentInfo.length !== 2) continue
-
+      if (studentInfo.length !== 2) {
+        errorList.push(studentInfo[0])
+        continue
+      }
       const student = await this.studentListRepository.findOne({
         where: {
           studentId: studentInfo[0],
@@ -176,7 +178,7 @@ export class StudentListController {
       },
       include: ['grades'],
     })
-    return studentList
+    return { studentList, errorList }
   }
 
   @intercept(AuthenRoleClassroomInterceptor.BINDING_KEY)
@@ -247,7 +249,7 @@ export class StudentListController {
     const total = calculateTotal(grades, gradeStructure)
     if (total !== studentList.total) {
       studentList.total = total
-      console.log("==== ~ studentList.total", studentList.total)
+      console.log('==== ~ studentList.total', studentList.total)
       await this.studentListRepository.save(studentList)
     }
     return this.gradesRepository.save(grade)
@@ -264,7 +266,7 @@ export class StudentListController {
     @requestBody.file()
     body: Request,
     @inject(RestBindings.Http.RESPONSE) res: Response,
-  ): Promise<UploadGradesResponse> {
+  ): Promise<UploadFileResponse> {
     // Processing files from request body
     await new Promise<object>((resolve, reject) => {
       this.handler(body, res, (err: unknown) => {
