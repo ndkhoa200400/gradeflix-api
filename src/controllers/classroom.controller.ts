@@ -19,7 +19,13 @@ import {
   HttpErrors,
 } from '@loopback/rest'
 import { Classroom, GradeStructure, SendInvitationRequest } from '../models'
-import { ClassroomRepository, UserClassroomRepository, UserRepository } from '../repositories'
+import {
+  ClassroomRepository,
+  GradesRepository,
+  StudentListRepository,
+  UserClassroomRepository,
+  UserRepository,
+} from '../repositories'
 import { EmailManager, IEmailRequest, MyUserService } from '../services'
 import { UserProfile, SecurityBindings } from '@loopback/security'
 import { ClassroomRole } from '../constants/classroom-role'
@@ -29,6 +35,7 @@ import { hashSha256 } from '../common/helpers'
 import { nanoid } from 'nanoid'
 import { AuthenRoleClassroomInterceptor } from '../interceptors/authen-role-classroom.interceptor'
 import { CheckJoinClassroomInterceptor } from '../interceptors/check-join-classroom.interceptor'
+import calculateTotal from '../common/helpers/calculate-grade-total'
 export class ClassroomController {
   constructor(
     @repository(ClassroomRepository)
@@ -42,6 +49,10 @@ export class ClassroomController {
     @inject.getter(SecurityBindings.USER, { optional: true })
     private getCurrentUser: Getter<UserProfile>,
     @inject(EmailManagerBindings.SEND_MAIL) public emailManager: EmailManager,
+    @repository(StudentListRepository)
+    public studentListRepository: StudentListRepository,
+    @repository(GradesRepository)
+    public gradesRepository: GradesRepository,
   ) {}
 
   @authenticate('jwt')
@@ -153,7 +164,7 @@ export class ClassroomController {
     @param.path.string('id') id: string,
     @param.filter(Classroom, { exclude: 'where' }) filter?: FilterExcludingWhere<Classroom>,
   ): Promise<GetManyClassroomResponse> {
-    filter = filter ?? {} as FilterExcludingWhere<Classroom>
+    filter = filter ?? ({} as FilterExcludingWhere<Classroom>)
     const getUser = await this.getCurrentUser()
 
     const userClassroom = await this.userClassroomRepository.findOne({
@@ -223,7 +234,7 @@ export class ClassroomController {
   @response(204, {
     description: 'Classroom PATCH success',
   })
-  async updateGrade(
+  async updateGradeStructure(
     @param.path.string('id') id: string,
     @requestBody({
       content: {
@@ -246,6 +257,20 @@ export class ClassroomController {
     this.validateParem(grade)
 
     classroom.gradeStructure = grade
+    const studentList = await this.studentListRepository.find({
+      where: {
+        classroomId: classroom.id,
+      },
+      include: ['grades'],
+    })
+    for (const student of studentList) {
+      const total = calculateTotal(student.grades, classroom.gradeStructure).toString()
+
+      if (total !== student.total) {
+        student.total = total
+        await this.studentListRepository.updateById(student.id, { total: student.total })
+      }
+    }
     return this.classroomRepository.save(classroom)
   }
 

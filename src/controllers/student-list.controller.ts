@@ -1,6 +1,6 @@
 import { authenticate } from '@loopback/authentication'
 import { UserServiceBindings } from '@loopback/authentication-jwt'
-import { Getter, inject, intercept } from '@loopback/core'
+import { inject, intercept } from '@loopback/core'
 import { Filter, repository } from '@loopback/repository'
 import {
   param,
@@ -13,7 +13,7 @@ import {
   Response,
   HttpErrors,
 } from '@loopback/rest'
-import { Grades, GradeStructure, StudentList } from '../models'
+import { Grades, GradeStructure, StudentList, UploadGradesResponse } from '../models'
 import {
   ClassroomRepository,
   GradesRepository,
@@ -22,7 +22,6 @@ import {
   UserRepository,
 } from '../repositories'
 import { MyUserService } from '../services'
-import { UserProfile, SecurityBindings } from '@loopback/security'
 import { AuthenRoleClassroomInterceptor } from '../interceptors'
 import { FILE_UPLOAD_SERVICE } from '../keys'
 import { RequestHandler } from 'express-serve-static-core'
@@ -30,6 +29,7 @@ import _ from 'lodash'
 import * as XLSX from 'xlsx'
 import { CheckJoinClassroomInterceptor } from '../interceptors/check-join-classroom.interceptor'
 import { StudentListHeaders } from '../constants/student-list-header'
+import calculateTotal from '../common/helpers/calculate-grade-total'
 
 @authenticate('jwt')
 export class StudentListController {
@@ -46,8 +46,6 @@ export class StudentListController {
     public gradesRepository: GradesRepository,
     @inject(UserServiceBindings.USER_SERVICE)
     public userService: MyUserService,
-    @inject.getter(SecurityBindings.USER, { optional: true })
-    private getCurrentUser: Getter<UserProfile>,
     @inject(FILE_UPLOAD_SERVICE) private handler: RequestHandler,
   ) {}
 
@@ -228,7 +226,8 @@ export class StudentListController {
       },
     })
 
-    this.validateGrade(body.newGrade)
+    if (!this.validateGrade(body.newGrade, gradeStructure))
+      throw new HttpErrors['400']('Điểm không hợp lệ. Vui lòng kiểm tra lại.')
 
     // Nếu chưa có điểm => tạo
     if (!grade) {
@@ -240,6 +239,17 @@ export class StudentListController {
     }
     // Nếu đã có điểm => cập nhật
     grade.grade = body.newGrade
+    const grades = await this.gradesRepository.find({
+      where: {
+        studentListId: studentList.id,
+      },
+    })
+    const total = calculateTotal(grades, gradeStructure)
+    if (total !== studentList.total) {
+      studentList.total = total
+      console.log("==== ~ studentList.total", studentList.total)
+      await this.studentListRepository.save(studentList)
+    }
     return this.gradesRepository.save(grade)
   }
 
@@ -254,7 +264,7 @@ export class StudentListController {
     @requestBody.file()
     body: Request,
     @inject(RestBindings.Http.RESPONSE) res: Response,
-  ): Promise<StudentList[]> {
+  ): Promise<UploadGradesResponse> {
     // Processing files from request body
     await new Promise<object>((resolve, reject) => {
       this.handler(body, res, (err: unknown) => {
@@ -312,11 +322,16 @@ export class StudentListController {
 
     const promiseAll: Promise<Grades>[] = []
     const gradesCreation: Grades[] = []
+
+    const errorList: string[] = []
     for (let i = 1; i < data.length; i++) {
       const studentInfo = data[i]
 
       // Missing information
-      if (studentInfo.length !== 2) continue
+      if (studentInfo.length !== 2) {
+        errorList.push(studentInfo[0])
+        continue
+      }
 
       const student = await this.studentListRepository.findOne({
         where: {
@@ -325,7 +340,11 @@ export class StudentListController {
         },
       })
       if (!student) continue
-
+      // Điểm lỗi
+      if (!this.validateGrade(studentInfo[1], gradeStructure)) {
+        errorList.push(studentInfo[0])
+        continue
+      }
       const grade = await this.gradesRepository.findOne({
         where: {
           studentListId: student.id,
@@ -333,12 +352,9 @@ export class StudentListController {
         },
       })
 
-      this.validateGrade(studentInfo[1])
-
       if (grade) {
         if (grade.grade !== studentInfo[1]) {
           grade.grade = studentInfo[1]
-          // await this.gradesRepository.save(grade)
           promiseAll.push(this.gradesRepository.save(grade))
         }
       } else {
@@ -360,18 +376,16 @@ export class StudentListController {
       include: ['grades'],
     })
 
-    // Calculate the total when students have enough columns of gradeStructure
+    // Calculate the total
     for (const student of studentList) {
-      if (student.grades.length === gradeStructure.parems.length) {
-        const total = this.calculateTotal(student.grades, gradeStructure).toString()
+      const total = calculateTotal(student.grades, gradeStructure).toString()
 
-        if (total !== student.total) {
-          student.total = total
-          await this.studentListRepository.updateById(student.id, { total: student.total })
-        }
+      if (total !== student.total) {
+        student.total = total
+        await this.studentListRepository.updateById(student.id, { total: student.total })
       }
     }
-    return studentList
+    return { studentList, errorList }
   }
 
   /**
@@ -398,10 +412,18 @@ export class StudentListController {
     return { files, fields: request.body }
   }
 
-  private validateGrade(grade: string) {
+  private validateGrade(grade: string, gradeStructure: GradeStructure) {
     const gradeNumber = Number(grade)
-    if (Number.isNaN(gradeNumber) || gradeNumber == null || gradeNumber < 0 || gradeNumber > 10)
-      throw new HttpErrors['400']('Điểm không hợp lệ.')
+    const total = Number(gradeStructure.total)
+    if (
+      grade === '' ||
+      Number.isNaN(gradeNumber) ||
+      gradeNumber == null ||
+      gradeNumber < 0 ||
+      gradeNumber > total
+    )
+      return false
+    return true
   }
 
   private mapFileToJson(workbook: XLSX.WorkBook): string[] {
@@ -418,19 +440,5 @@ export class StudentListController {
     }
 
     return data
-  }
-
-  private calculateTotal(grades: Grades[], gradeStructure: GradeStructure) {
-    let total = 0
-
-    for (const grade of grades) {
-      const parem = gradeStructure.parems.find(p => p.name === grade.name)
-      const g = Number(grade.grade)
-
-      if (!g || !parem) continue
-      total += (g * Number(parem.percent)) / 100
-    }
-
-    return ((total * Number(gradeStructure.total)) / 10).toFixed(2)
   }
 }
