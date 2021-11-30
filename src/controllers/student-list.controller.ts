@@ -256,6 +256,7 @@ export class StudentListController {
     return this.studentListRepository.findOne({
       where: {
         classroomId: classroomId,
+        studentId: studentList.studentId,
       },
       include: ['grades'],
     })
