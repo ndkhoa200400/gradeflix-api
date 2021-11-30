@@ -205,7 +205,7 @@ export class StudentListController {
       },
     })
     body: { newGrade: 'string' },
-  ): Promise<Grades> {
+  ): Promise<StudentList | null> {
     const studentList = await this.studentListRepository.findOne({
       where: { studentId: studentId, classroomId: classroomId },
     })
@@ -233,14 +233,16 @@ export class StudentListController {
 
     // Nếu chưa có điểm => tạo
     if (!grade) {
-      return this.gradesRepository.create({
+      await this.gradesRepository.create({
         studentListId: studentList.id,
         name: gradeName,
         grade: body.newGrade,
       })
+    } else {
+      // Nếu đã có điểm => cập nhật
+      grade.grade = body.newGrade
+      await this.gradesRepository.save(grade)
     }
-    // Nếu đã có điểm => cập nhật
-    grade.grade = body.newGrade
     const grades = await this.gradesRepository.find({
       where: {
         studentListId: studentList.id,
@@ -249,10 +251,14 @@ export class StudentListController {
     const total = calculateTotal(grades, gradeStructure)
     if (total !== studentList.total) {
       studentList.total = total
-      console.log('==== ~ studentList.total', studentList.total)
       await this.studentListRepository.save(studentList)
     }
-    return this.gradesRepository.save(grade)
+    return this.studentListRepository.findOne({
+      where: {
+        classroomId: classroomId,
+      },
+      include: ['grades'],
+    })
   }
 
   @intercept(AuthenRoleClassroomInterceptor.BINDING_KEY)
