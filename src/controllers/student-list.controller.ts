@@ -203,17 +203,35 @@ export class StudentListController {
       where: { studentId: studentId, classroomId: classroomId },
     })
 
-    if (!studentList) throw new HttpErrors['404']('Không tìm thấy học sinh.')
+    if (!studentList)
+      throw new HttpErrors['404'](`Không tìm thấy học sinh với mã số sinh viên ${studentId}.`)
+
+    const classroom = await this.classroomRepository.findById(classroomId)
+
+    const gradeStructure = classroom.gradeStructure
+    if (!gradeStructure) throw new HttpErrors['400'](`Vui lòng thêm cấu trúc điểm cho lớp học.`)
+
+    if (!gradeStructure.parems.find(parem => parem.name === gradeName))
+      throw new HttpErrors['400'](`Lớp học không có thang điểm ${gradeName}.`)
+
     const grade = await this.gradesRepository.findOne({
       where: {
         studentListId: studentList.id,
         name: gradeName,
       },
     })
-    if (!grade) throw new HttpErrors['404']('Không tìm thấy điểm của học sinh.')
 
     this.validateGrade(body.newGrade)
 
+    // Nếu chưa có điểm => tạo
+    if (!grade) {
+      return this.gradesRepository.create({
+        studentListId: studentList.id,
+        name: gradeName,
+        grade: body.newGrade,
+      })
+    }
+    // Nếu đã có điểm => cập nhật
     grade.grade = body.newGrade
     return this.gradesRepository.save(grade)
   }
