@@ -193,7 +193,14 @@ export class StudentListController {
     @requestBody({
       content: {
         'application/json': {
-          schema: { newGrade: 'string' },
+          schema: {
+            type: 'object',
+            properties: {
+              newGrade: {
+                type: 'string',
+              },
+            },
+          },
         },
       },
     })
@@ -393,7 +400,7 @@ export class StudentListController {
 
   private validateGrade(grade: string) {
     const gradeNumber = Number(grade)
-    if (!gradeNumber || gradeNumber < 0 || gradeNumber > 10)
+    if (Number.isNaN(gradeNumber) || gradeNumber == null || gradeNumber < 0 || gradeNumber > 10)
       throw new HttpErrors['400']('Điểm không hợp lệ.')
   }
 
