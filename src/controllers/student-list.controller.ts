@@ -68,9 +68,9 @@ export class StudentListController {
   }
 
   @intercept(CheckJoinClassroomInterceptor.BINDING_KEY)
-  @get('/classrooms/{classroomId}/student-list/{studentId}/grades')
+  @get('/classrooms/{classroomId}/students/{studentId}/grades')
   @response(200, {
-    description: 'Update student list',
+    description: 'Get one student grades',
   })
   async getStudentGrade(
     @param.path.string('classroomId') classroomId: string,
