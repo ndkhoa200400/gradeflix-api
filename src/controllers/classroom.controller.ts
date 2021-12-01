@@ -74,11 +74,6 @@ export class ClassroomController {
     })
     classroom: Classroom,
   ): Promise<Classroom> {
-    // Kiểm tra barem điểm có hợp lệ k
-    // if (classroom.barem) {
-    //   const isBaremValid = this.validateBarem(classroom.barem)
-    //   if (!isBaremValid) throw new HttpErrors['400']('Barem điểm không hợp lệ!')
-    // }
     const getUser = await this.getCurrentUser()
     const user = await this.userRepository.findById(getUser.id)
     classroom.hostId = user.id
@@ -256,6 +251,7 @@ export class ClassroomController {
     if (!classroom) throw new HttpErrors['404']('Không tìm thấy lớp học')
     this.validateParem(grade)
 
+    await this.removeRedundantGrade(classroom, grade)
     classroom.gradeStructure = grade
     const studentList = await this.studentListRepository.find({
       where: {
@@ -271,6 +267,7 @@ export class ClassroomController {
         await this.studentListRepository.updateById(student.id, { total: student.total })
       }
     }
+
     return this.classroomRepository.save(classroom)
   }
 
@@ -487,5 +484,24 @@ export class ClassroomController {
     }
 
     if (total !== 100) throw new HttpErrors['400']('Tổng thang điểm phải đạt 100%')
+  }
+
+  /**
+   * Remove redundant grades of student list when update classroom parem
+   */
+  async removeRedundantGrade(classroom: Classroom, newGradeStructure: GradeStructure) {
+    if (!classroom.gradeStructure) return
+    const currentGradeStructure = classroom.gradeStructure
+    const newGradesName = newGradeStructure.parems.map(parem => parem.name)
+    const redundantGradeNames = currentGradeStructure.parems
+      .filter(parem => !newGradesName.includes(parem.name))
+      .map(parem => parem.name)
+    const studentListIds = (
+      await this.studentListRepository.find({ where: { classroomId: classroom.id } })
+    ).map(student => student.id)
+    await this.gradesRepository.deleteAll({
+      name: { inq: redundantGradeNames },
+      studentListId: { inq: studentListIds },
+    })
   }
 }

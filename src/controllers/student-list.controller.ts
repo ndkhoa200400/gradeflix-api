@@ -93,7 +93,6 @@ export class StudentListController {
       })
       studentListResponse.push(temp)
     }
-    console.log('studentList', studentListResponse)
     return studentListResponse
   }
 
@@ -202,6 +201,7 @@ export class StudentListController {
     if (studentListCreation.length > 0)
       await this.studentListRepository.createAll(studentListCreation)
     await Promise.all(promiseAll)
+    await this.removeRedundantStudents(classroomId,data)
     const studentList = await this.studentListRepository.find({
       where: {
         classroomId: classroomId,
@@ -465,11 +465,11 @@ export class StudentListController {
     return true
   }
 
-  private mapFileToJson(workbook: XLSX.WorkBook): string[] {
+  private mapFileToJson(workbook: XLSX.WorkBook): string[][] {
     const sheets = workbook.SheetNames
-    const data: string[] = []
+    const data: string[][] = []
     for (let i = 0; i < sheets.length; i++) {
-      const temp: string[] = XLSX.utils.sheet_to_json(workbook.Sheets[workbook.SheetNames[i]], {
+      const temp: string[][] = XLSX.utils.sheet_to_json(workbook.Sheets[workbook.SheetNames[i]], {
         raw: false,
         header: 1,
       })
@@ -479,5 +479,15 @@ export class StudentListController {
     }
 
     return data
+  }
+
+  async removeRedundantStudents(classroomId: string, newStudentList: string[][]) {
+    const newStudentIds = newStudentList.map(student => student[0])
+    await this.studentListRepository.deleteAll({
+      classroomId: classroomId,
+      studentId: {
+        nin: newStudentIds,
+      },
+    })
   }
 }
