@@ -12,8 +12,15 @@ import {
   RestBindings,
   Response,
   HttpErrors,
+  getModelSchemaRef,
 } from '@loopback/rest'
-import { Grades, GradeStructure, StudentList, UploadFileResponse } from '../models'
+import {
+  Grades,
+  GradeStructure,
+  StudentList,
+  StudentListResponse,
+  UploadFileResponse,
+} from '../models'
 import {
   ClassroomRepository,
   GradesRepository,
@@ -52,19 +59,42 @@ export class StudentListController {
   @intercept(AuthenRoleClassroomInterceptor.BINDING_KEY)
   @get('/classrooms/{id}/student-list')
   @response(200, {
-    description: 'Update student list',
+    description: 'Find student list from a classroom',
+    content: {
+      'application/json': {
+        schema: {
+          type: 'array',
+          items: getModelSchemaRef(StudentListResponse),
+        },
+      },
+    },
   })
   async find(
     @param.path.string('id') classroomId: string,
     @param.filter(StudentList) filter?: Filter<StudentList>,
-  ): Promise<StudentList[]> {
+  ): Promise<StudentListResponse[]> {
     filter = filter ?? ({} as Filter<StudentList>)
 
     filter.include = [...(filter.include ?? []), 'grades']
     filter.where = { ...filter.where, classroomId: classroomId }
     const studentList = await this.studentListRepository.find(filter)
+    const studentListResponse: StudentListResponse[] = []
+    for (const student of studentList) {
+      const userClassroom = await this.userClassroomRepository.findOne({
+        where: {
+          clasroomId: classroomId,
+          studentId: student.studentId,
+        },
+      })
 
-    return studentList
+      const temp: StudentListResponse = new StudentListResponse({
+        ...student,
+        user: userClassroom,
+      })
+      studentListResponse.push(temp)
+    }
+    console.log('studentList', studentListResponse)
+    return studentListResponse
   }
 
   @intercept(CheckJoinClassroomInterceptor.BINDING_KEY)
