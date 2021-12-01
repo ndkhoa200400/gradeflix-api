@@ -3,12 +3,13 @@ import { UserServiceBindings } from '@loopback/authentication-jwt'
 import { Getter, inject, intercept } from '@loopback/core'
 import { repository } from '@loopback/repository'
 import { post, param, getModelSchemaRef, requestBody, response, HttpErrors } from '@loopback/rest'
-import { UpdateStudentidRequest } from '../models'
+import { UpdateStudentIdRequest } from '../models'
 import { ClassroomRepository, UserClassroomRepository, UserRepository } from '../repositories'
 import { MyUserService } from '../services'
 import { UserProfile, SecurityBindings } from '@loopback/security'
 import { ClassroomRole } from '../constants/classroom-role'
 import { AuthenRoleClassroomInterceptor } from '../interceptors'
+import { CheckJoinClassroomInterceptor } from '../interceptors/check-join-classroom.interceptor'
 export class UserClassroomController {
   constructor(
     @repository(ClassroomRepository)
@@ -28,20 +29,20 @@ export class UserClassroomController {
   @response(204, {
     description: 'Student ID changes successfully',
   })
-  @intercept(AuthenRoleClassroomInterceptor.BINDING_KEY)
+  @intercept(CheckJoinClassroomInterceptor.BINDING_KEY)
   async changeStudentInfo(
     @param.path.string('id') classroomId: string,
     @param.path.number('userId') userId: number,
     @requestBody({
       content: {
         'application/json': {
-          schema: getModelSchemaRef(UpdateStudentidRequest, {
+          schema: getModelSchemaRef(UpdateStudentIdRequest, {
             partial: true,
           }),
         },
       },
     })
-    body: UpdateStudentidRequest,
+    body: UpdateStudentIdRequest,
   ): Promise<void> {
     const classroom = await this.classroomRepository.findById(classroomId)
 

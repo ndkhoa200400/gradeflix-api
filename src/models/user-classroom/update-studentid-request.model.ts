@@ -1,7 +1,7 @@
 import { model, property } from "@loopback/repository";
 
 @model()
-export class UpdateStudentidRequest {
+export class UpdateStudentIdRequest {
     @property({
         type:'string'
     })
