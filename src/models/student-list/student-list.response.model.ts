@@ -1,13 +1,13 @@
 import { model, property } from '@loopback/repository'
 import { StudentList } from '.'
-import { UserClassroom } from '..'
+import { User } from '..'
 
 @model()
 export class StudentListResponse extends StudentList {
   @property({
-    type: UserClassroom
+    type: User
   })
-  user: UserClassroom | null
+  user: User | null
 
   constructor(data?: Partial<StudentListResponse>) {
     super(data)

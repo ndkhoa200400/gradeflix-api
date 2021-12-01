@@ -87,9 +87,15 @@ export class StudentListController {
         },
       })
 
+      const user = await this.userRepository.findOne({
+        where :{
+          id: userClassroom?.userId
+        }
+      })
+
       const temp: StudentListResponse = new StudentListResponse({
         ...student,
-        user: userClassroom,
+        user: user,
       })
       studentListResponse.push(temp)
     }
@@ -169,6 +175,8 @@ export class StudentListController {
     const promiseAll: Promise<StudentList>[] = []
     const studentListCreation: StudentList[] = []
     const errorList: string[] = []
+    await this.removePreviousStudentList(classroomId)
+
     for (let i = 1; i < data.length; i++) {
       const studentInfo = data[i]
 
@@ -201,7 +209,6 @@ export class StudentListController {
     if (studentListCreation.length > 0)
       await this.studentListRepository.createAll(studentListCreation)
     await Promise.all(promiseAll)
-    await this.removeRedundantStudents(classroomId,data)
     const studentList = await this.studentListRepository.find({
       where: {
         classroomId: classroomId,
@@ -481,13 +488,21 @@ export class StudentListController {
     return data
   }
 
-  async removeRedundantStudents(classroomId: string, newStudentList: string[][]) {
-    const newStudentIds = newStudentList.map(student => student[0])
+  async removePreviousStudentList(classroomId: string) {
+    const studentList = await this.studentListRepository.find({
+      where: {
+        classroomId: classroomId,
+      },
+    })
+
+    await this.gradesRepository.deleteAll({
+      studentListId: {
+        inq: studentList.map(st => st.id),
+      },
+    })
+
     await this.studentListRepository.deleteAll({
       classroomId: classroomId,
-      studentId: {
-        nin: newStudentIds,
-      },
     })
   }
 }
