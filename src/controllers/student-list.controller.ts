@@ -20,6 +20,7 @@ import {
   StudentList,
   StudentListResponse,
   UploadFileResponse,
+  User,
 } from '../models'
 import {
   ClassroomRepository,
@@ -86,13 +87,15 @@ export class StudentListController {
           studentId: student.studentId,
         },
       })
+      let user: User | null = null
 
-      const user = await this.userRepository.findOne({
-        where :{
-          id: userClassroom?.userId
-        }
-      })
-
+      if (userClassroom) {
+        user = await this.userRepository.findOne({
+          where: {
+            id: userClassroom.userId,
+          },
+        })
+      }
       const temp: StudentListResponse = new StudentListResponse({
         ...student,
         user: user,
