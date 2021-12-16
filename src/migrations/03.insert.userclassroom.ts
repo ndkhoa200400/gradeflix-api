@@ -3,7 +3,7 @@ import { JSONObject } from '@loopback/core'
 import { GradeflixApplication } from '../application'
 import { ClassroomRepository, UserClassroomRepository, UserRepository } from '../repositories'
 import { insertCsvToModel } from '../common/helpers/csv'
-import { ClassroomRole } from '../constants/classroom-role'
+import { ClassroomRole } from '../constants/role'
 export default async function (app: GradeflixApplication) {
   const classrooms = await app.getRepository(ClassroomRepository)
   const users = await app.getRepository(UserRepository)
@@ -31,7 +31,6 @@ export default async function (app: GradeflixApplication) {
       await userClassrooms.create({
         classroomId: classroom?.id,
         userId: user?.id,
-        studentId: row.studentId?.toString(),
         userRole: row.userRole?.toString() as ClassroomRole,
       })
     }

@@ -12,16 +12,11 @@ import {
   requestBody,
   response,
 } from '@loopback/rest'
-import {
-  LoginReq,
-  LoginRes,
-  PatchUserRequest,
-  UpdatePasswordRequest,
-  User,
-} from '../models'
+import { LoginReq, LoginRes, PatchUserRequest, UpdatePasswordRequest, User } from '../models'
 import { MyUserService } from '../services'
 import { UserRepository } from '../repositories'
 import dayjs from 'dayjs'
+import { checkUniqueStudentId } from '../common/helpers'
 
 export class UserController {
   constructor(
@@ -75,7 +70,6 @@ export class UserController {
     const user = await this.userService.register(userBody)
     return user
   }
-
 
   @authenticate('jwt')
   @get('/users/{id}')
@@ -145,7 +139,7 @@ export class UserController {
   @authenticate('jwt')
   @post('/users/me')
   @response(200, {
-    description: 'User UPDATE',
+    description: 'User information UPDATE',
     content: {
       'application/json': {
         schema: getModelSchemaRef(User, { includeRelations: true }),
@@ -168,6 +162,13 @@ export class UserController {
         throw new HttpErrors['400']('Ngày sinh không đúng định dạng!')
     }
     const user = await this.userRepository.findById(getUser.id)
+
+    if (userBody.studentId) {
+      const isUnique = await checkUniqueStudentId(userBody.studentId, this.userRepository)
+
+      if (!isUnique) throw new HttpErrors['400']('Mã số sinh viên đã tồn tại')
+    }
+
     Object.assign(user, userBody)
 
     return this.userRepository.save(user)

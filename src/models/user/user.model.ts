@@ -1,6 +1,7 @@
 import { hasMany, model, property } from '@loopback/repository'
 import { Classroom, UserClassroom } from '..'
 import { BaseEntity } from '../../common/models/base-entity.model'
+import { UserRole } from '../../constants/role'
 import { TimeStampMixin } from '../../mixins'
 
 @model({
@@ -51,6 +52,30 @@ export class User extends TimeStampMixin(BaseEntity) {
     hidden: true,
   })
   password: string
+
+  @property({
+    type: 'string',
+    default: '',
+    postgres: {
+      nullable: 'YES',
+    },
+  })
+  studentId: string
+
+  @property({
+    type: 'boolean',
+    default: true
+  })
+  active: boolean
+
+  @property({
+    type: 'string',
+    default: UserRole.USER,
+    jsonSchema: {
+      enum: Object.values(UserRole),
+    },
+  })
+  role: UserRole
 
   @hasMany(() => Classroom, {
     through: {

@@ -13,7 +13,7 @@ import { UserProfile, SecurityBindings } from '@loopback/security'
 import { HttpErrors } from '@loopback/rest'
 import { repository } from '@loopback/repository'
 import { ClassroomRepository, UserClassroomRepository, UserRepository } from '../repositories'
-import { ClassroomRole } from '../constants/classroom-role'
+import { ClassroomRole } from '../constants/role'
 
 /**
  * This class will be bound to the application as an `Interceptor` during

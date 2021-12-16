@@ -2,7 +2,7 @@
 import { belongsTo, model, property } from '@loopback/repository'
 import { Classroom, User } from '..'
 import { BaseEntity } from '../../common/models/base-entity.model'
-import { ClassroomRole } from '../../constants/classroom-role'
+import { ClassroomRole } from '../../constants/role'
 import { TimeStampMixin } from '../../mixins'
 
 @model({
@@ -13,15 +13,6 @@ import { TimeStampMixin } from '../../mixins'
         keys: {
           userId: 1,
           classroomId: 1,
-        },
-        options: {
-          unique: true,
-        },
-      },
-      composite_key_studentid_classroomid: {
-        keys: {
-          classroomId: 1,
-          studentId: 1,
         },
         options: {
           unique: true,
@@ -51,15 +42,7 @@ export class UserClassroom extends TimeStampMixin(BaseEntity) {
     },
   })
   userRole: ClassroomRole
-
-  @property({
-    type: 'string',
-    postgres: {
-      nullable: 'YES',
-    },
-  })
-  studentId?: string;
-
+  
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   [prop: string]: any
 

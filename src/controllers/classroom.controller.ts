@@ -28,7 +28,7 @@ import {
 } from '../repositories'
 import { EmailManager, IEmailRequest, MyUserService } from '../services'
 import { UserProfile, SecurityBindings } from '@loopback/security'
-import { ClassroomRole } from '../constants/classroom-role'
+import { ClassroomRole } from '../constants/role'
 import { GetManyClassroomResponse, GetOneClassroomResponse, UserWithRole } from '../models/'
 import { EmailManagerBindings } from '../keys'
 import { hashSha256 } from '../common/helpers'
@@ -175,7 +175,6 @@ export class ClassroomController {
       user: new UserWithRole({
         ...currentUser,
         userRole: userClassroom?.userRole ?? ClassroomRole.HOST,
-        studentId: userClassroom?.studentId,
       }),
     })
   }
@@ -214,7 +213,6 @@ export class ClassroomController {
       const temp = new UserWithRole({
         userRole: userClassroom.userRole,
         ...userClassroom.user,
-        studentId: userClassroom.studentId,
       })
       usersInClassroom.push(temp)
     }

@@ -3,3 +3,8 @@ export enum ClassroomRole {
   STUDENT = 'STUDENT',
   HOST = 'HOST',
 }
+
+export enum UserRole {
+  ADMIN = 'ADMIN',
+  USER = 'USER'
+}

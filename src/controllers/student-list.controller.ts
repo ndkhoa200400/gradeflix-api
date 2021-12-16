@@ -20,7 +20,6 @@ import {
   StudentList,
   StudentListResponse,
   UploadFileResponse,
-  User,
 } from '../models'
 import {
   ClassroomRepository,
@@ -81,21 +80,13 @@ export class StudentListController {
     const studentList = await this.studentListRepository.find(filter)
     const studentListResponse: StudentListResponse[] = []
     for (const student of studentList) {
-      const userClassroom = await this.userClassroomRepository.findOne({
+
+      const user = await this.userRepository.findOne({
         where: {
-          clasroomId: classroomId,
           studentId: student.studentId,
         },
       })
-      let user: User | null = null
 
-      if (userClassroom) {
-        user = await this.userRepository.findOne({
-          where: {
-            id: userClassroom.userId,
-          },
-        })
-      }
       const temp: StudentListResponse = new StudentListResponse({
         ...student,
         user: user,

@@ -7,9 +7,10 @@ import { UpdateStudentIdRequest } from '../models'
 import { ClassroomRepository, UserClassroomRepository, UserRepository } from '../repositories'
 import { MyUserService } from '../services'
 import { UserProfile, SecurityBindings } from '@loopback/security'
-import { ClassroomRole } from '../constants/classroom-role'
+import { ClassroomRole } from '../constants/role'
 import { AuthenRoleClassroomInterceptor } from '../interceptors'
 import { CheckJoinClassroomInterceptor } from '../interceptors/check-join-classroom.interceptor'
+import { checkUniqueStudentId } from '../common/helpers'
 export class UserClassroomController {
   constructor(
     @repository(ClassroomRepository)
@@ -27,7 +28,7 @@ export class UserClassroomController {
   @authenticate('jwt')
   @post('/classrooms/{id}/users/{userId}/')
   @response(204, {
-    description: 'Student ID changes successfully',
+    description: 'Student ID changed successfully',
   })
   @intercept(CheckJoinClassroomInterceptor.BINDING_KEY)
   async changeStudentInfo(
@@ -44,39 +45,45 @@ export class UserClassroomController {
     })
     body: UpdateStudentIdRequest,
   ): Promise<void> {
-    const classroom = await this.classroomRepository.findById(classroomId)
-
     // user who calls this api
     const getUser = await this.getCurrentUser()
 
-    // student that is changed student id
-    const student = await this.userClassroomRepository.findOne({
+    const teacher = await this.userClassroomRepository.count({
+      where: {
+        userId: getUser.id,
+        classroomId: classroomId,
+        userRole: ClassroomRole.TEACHER,
+      },
+    })
+
+    // Check if current user is not a teacher or not the one wants to change self id
+    if (!teacher.count && getUser.id !== userId) {
+      throw new HttpErrors.Forbidden('Bạn không có quyền thực hiện hành động này.')
+    }
+
+    // the student whose student id is changed
+    const student = await this.userRepository.count({
       where: {
         userId: userId,
         classroomId: classroomId,
         userRole: ClassroomRole.STUDENT,
       },
     })
+    if (!student.count) throw new HttpErrors.NotFound('Không tìm thấy sinh viên trong lớp học này.')
+    const user = await this.userRepository.findById(userId)
 
-    if (!student) throw new HttpErrors.NotFound('Không tìm thấy sinh viên trong lớp học này.')
+    const isStudentIdUnique = await checkUniqueStudentId(body.studentId, this.userRepository)
 
-    const isStudentIdExisted = await this.userClassroomRepository.findOne({
-      where: {
-        studentId: body.studentId,
-        classroomId: classroom.id,
-        userId: { neq: getUser.id },
-      },
-    })
-    if (isStudentIdExisted) throw new HttpErrors['400']('Mã số sinh viên đã tồn tại!')
+    if (!isStudentIdUnique) throw new HttpErrors['400']('Mã số sinh viên đã tồn tại!')
 
-    student.studentId = body.studentId
-    await this.userClassroomRepository.save(student)
+    user.studentId = body.studentId
+    await this.userRepository.save(user)
   }
 
   @authenticate('jwt')
   @post('/classrooms/{classroomId}/users/leave')
   @response(204, {
-    description: 'User leaves clasroom',
+    description: 'User leaves a clasroom',
   })
   async leaveClassroom(@param.path.string('classroomId') classroomId: string): Promise<void> {
     const getUser = await this.getCurrentUser()

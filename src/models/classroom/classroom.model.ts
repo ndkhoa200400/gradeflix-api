@@ -59,6 +59,12 @@ export class Classroom extends TimeStampMixin(BaseEntity) {
   })
   gradeStructure?: GradeStructure
 
+  @property({
+    type: 'boolean',
+    default: true,
+  })
+  active: boolean
+
   @hasMany(() => StudentList)
   studentList: StudentList[]
 

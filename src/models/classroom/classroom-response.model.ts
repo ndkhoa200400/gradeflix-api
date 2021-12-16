@@ -1,7 +1,7 @@
 import { model, property } from '@loopback/repository'
 
 import { User } from '..'
-import { ClassroomRole } from '../../constants/classroom-role'
+import { ClassroomRole } from '../../constants/role'
 import { Classroom } from '.'
 @model({ strict: true })
 export class UserWithRole extends User {
@@ -12,11 +12,6 @@ export class UserWithRole extends User {
     },
   })
   userRole?: ClassroomRole
-
-  @property({
-    type: 'string',
-  })
-  studentId?: string
 
   constructor(data?: Partial<Omit<UserWithRole, 'password'>>) {
     super(data)
