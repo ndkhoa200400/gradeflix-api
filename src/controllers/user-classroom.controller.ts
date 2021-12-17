@@ -17,7 +17,7 @@ import { MyUserService } from '../services'
 import { UserProfile, SecurityBindings } from '@loopback/security'
 import { ClassroomRole } from '../constants/role'
 import { AuthenRoleClassroomInterceptor } from '../interceptors'
-import { CheckJoinClassroomInterceptor } from '../interceptors/check-join-classroom.interceptor'
+import { CheckJoinClassroomInterceptor } from '../interceptors/'
 import { checkUniqueStudentId } from '../common/helpers'
 export class UserClassroomController {
   constructor(

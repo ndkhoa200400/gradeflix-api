@@ -34,7 +34,7 @@ import { EmailManagerBindings } from '../keys'
 import { hashSha256 } from '../common/helpers'
 import { nanoid } from 'nanoid'
 import { AuthenRoleClassroomInterceptor } from '../interceptors/authen-role-classroom.interceptor'
-import { CheckJoinClassroomInterceptor } from '../interceptors/check-join-classroom.interceptor'
+import { CheckJoinClassroomInterceptor } from '../interceptors/'
 import calculateTotal from '../common/helpers/calculate-grade-total'
 export class ClassroomController {
   constructor(
@@ -248,7 +248,7 @@ export class ClassroomController {
     })
 
     if (!classroom) throw new HttpErrors['404']('Không tìm thấy lớp học')
-    this.validateParem(grade)
+    this.validateGradeStructure(grade)
 
     await this.removeRedundantGrade(classroom, grade)
     classroom.gradeStructure = grade
@@ -424,7 +424,7 @@ export class ClassroomController {
     const user = await this.userRepository.findById(getUser.id)
     role = role ?? ClassroomRole.STUDENT
     if (role === ClassroomRole.HOST)
-      throw new HttpErrors['403']('Bạn không thể thực hiện hành động này.')
+      throw new HttpErrors['403']('Vai trò không hợp lệ.')
     if (!(role in ClassroomRole)) throw new HttpErrors['400']('Vai trò không hợp lệ.')
 
     const classroom = await this.classroomRepository.findById(classroomId)
@@ -466,35 +466,35 @@ export class ClassroomController {
   }
 
   /**
-   *
+   * Validate whether the total of all grade compositions is equal to the total of the grade structure or not
    * @param grade grade structure of a classroom
    * @returns pass if grade is valid, throw exception if not
    */
-  validateParem(grade: GradeStructure) {
+  validateGradeStructure(grade: GradeStructure) {
     let total = 0
     if (!Number(grade.total) || Number(grade.total) < 1)
       throw new HttpErrors['400']('Tổng điểm phải lớn hơn 0')
 
-    for (const parem of grade.parems) {
-      if (!Number(parem.percent)) throw new HttpErrors['400']('Định dạng thang điểm không hợp lệ')
-      const percent = parseFloat(parem.percent)
+    for (const gradeComposition of grade.gradeCompositions) {
+      if (!Number(gradeComposition.percent)) throw new HttpErrors['400']('Định dạng thang điểm không hợp lệ')
+      const percent = parseFloat(gradeComposition.percent)
       if (percent < 1) throw new HttpErrors['400']('Thang điểm phải lớn hơn 0')
-      total += parseFloat(parem.percent)
+      total += parseFloat(gradeComposition.percent)
     }
 
     if (total !== 100) throw new HttpErrors['400']('Tổng thang điểm phải đạt 100%')
   }
 
   /**
-   * Remove redundant grades of student list when update classroom parem
+   * Remove redundant grades of student list when update classroom's grade structure which are no longer in the grade structure
    */
   async removeRedundantGrade(classroom: Classroom, newGradeStructure: GradeStructure) {
     if (!classroom.gradeStructure) return
     const currentGradeStructure = classroom.gradeStructure
-    const newGradesName = newGradeStructure.parems.map(parem => parem.name)
-    const redundantGradeNames = currentGradeStructure.parems
-      .filter(parem => !newGradesName.includes(parem.name))
-      .map(parem => parem.name)
+    const newGradesName = newGradeStructure.gradeCompositions.map(gradeComposition => gradeComposition.name)
+    const redundantGradeNames = currentGradeStructure.gradeCompositions
+      .filter(gradeComposition => !newGradesName.includes(gradeComposition.name))
+      .map(gradeComposition => gradeComposition.name)
     const studentListIds = (
       await this.studentListRepository.find({ where: { classroomId: classroom.id } })
     ).map(student => student.id)

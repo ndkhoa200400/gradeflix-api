@@ -34,7 +34,7 @@ import { FILE_UPLOAD_SERVICE } from '../keys'
 import { RequestHandler } from 'express-serve-static-core'
 import _ from 'lodash'
 import * as XLSX from 'xlsx'
-import { CheckJoinClassroomInterceptor } from '../interceptors/check-join-classroom.interceptor'
+import { CheckJoinClassroomInterceptor } from '../interceptors/'
 import { StudentListHeaders } from '../constants/student-list-header'
 import calculateTotal from '../common/helpers/calculate-grade-total'
 
@@ -80,7 +80,6 @@ export class StudentListController {
     const studentList = await this.studentListRepository.find(filter)
     const studentListResponse: StudentListResponse[] = []
     for (const student of studentList) {
-
       const user = await this.userRepository.findOne({
         where: {
           studentId: student.studentId,
@@ -119,7 +118,7 @@ export class StudentListController {
   @intercept(AuthenRoleClassroomInterceptor.BINDING_KEY)
   @post('/classrooms/{id}/student-list')
   @response(200, {
-    description: 'Upload student grades',
+    description: 'Upload student list',
   })
   async uploadStudentList(
     @param.path.string('id') classroomId: string,
@@ -249,7 +248,7 @@ export class StudentListController {
     const gradeStructure = classroom.gradeStructure
     if (!gradeStructure) throw new HttpErrors['400'](`Vui lòng thêm cấu trúc điểm cho lớp học.`)
 
-    if (!gradeStructure.parems.find(parem => parem.name === gradeName))
+    if (!gradeStructure.gradeCompositions.find(gradeComposition => gradeComposition.name === gradeName))
       throw new HttpErrors['400'](`Lớp học không có thang điểm ${gradeName}.`)
 
     const grade = await this.gradesRepository.findOne({
@@ -350,7 +349,7 @@ export class StudentListController {
     const gradeStructure = classroom.gradeStructure
     if (!gradeStructure) throw new HttpErrors['400']('Vui lòng thêm cấu trúc điểm cho lớp học.')
 
-    const scale = gradeStructure.parems.find(parem => parem.name === gradeName)
+    const scale = gradeStructure.gradeCompositions.find(gradeComposition => gradeComposition.name === gradeName)
     if (!scale) throw new HttpErrors['400'](`Thang điểm ${gradeName} không tồn tại.`)
 
     // Validate whether classroom has a student list or not
@@ -369,6 +368,7 @@ export class StudentListController {
 
       // Missing information
       if (studentInfo.length !== 2) {
+        console.log('Missing information', studentInfo)
         errorList.push(studentInfo[0])
         continue
       }
@@ -382,6 +382,8 @@ export class StudentListController {
       if (!student) continue
       // Điểm lỗi
       if (!this.validateGrade(studentInfo[1], gradeStructure)) {
+        console.log('Grade is invalid', studentInfo)
+
         errorList.push(studentInfo[0])
         continue
       }

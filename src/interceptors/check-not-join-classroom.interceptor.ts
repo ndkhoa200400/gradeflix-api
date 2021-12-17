@@ -18,11 +18,11 @@ import { ClassroomRepository, UserClassroomRepository, UserRepository } from '..
  * This class will be bound to the application as an `Interceptor` during
  * `boot`
  *
- * Validate user has joined the classroom or not. If no => throw exception
+ * Validate user has joined the classroom or not. If yes => throw exception
  */
-@injectable({ tags: { key: CheckJoinClassroomInterceptor.BINDING_KEY } })
-export class CheckJoinClassroomInterceptor implements Provider<Interceptor> {
-  static readonly BINDING_KEY = `interceptors.${CheckJoinClassroomInterceptor.name}`
+@injectable({ tags: { key: CheckNotJoinClassroomInterceptor.BINDING_KEY } })
+export class CheckNotJoinClassroomInterceptor implements Provider<Interceptor> {
+  static readonly BINDING_KEY = `interceptors.${CheckNotJoinClassroomInterceptor.name}`
 
   constructor(
     @inject(RestBindings.Http.REQUEST) private request: Request,
@@ -64,15 +64,15 @@ export class CheckJoinClassroomInterceptor implements Provider<Interceptor> {
         },
       })
       if (!classroom) throw new HttpErrors['404']('Không tìm thấy lớp học.')
-      const isJoined = await this.userClassroomRepository.findOne({
+      const isJoined = await this.userClassroomRepository.count({
         where: {
           userId: getUser.id,
           classroomId: classroom.id,
         },
       })
 
-      if (classroom.hostId !== getUser.id && !isJoined) {
-        throw new HttpErrors.Forbidden('Bạn không có quyền thực hiện hành động này.')
+      if (isJoined.count) {
+        throw new HttpErrors['400']('Bạn đã tham gia lớp học.')
       }
       // Add post-invocation logic here
       return result

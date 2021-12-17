@@ -5,11 +5,11 @@ function calculateTotal(grades: Grades[], gradeStructure: GradeStructure) {
   let total = 0
 
   for (const grade of grades) {
-    const parem = gradeStructure.parems.find(p => p.name === grade.name)
-    const g = Number(grade.grade)
+    const gradeComposition = gradeStructure.gradeCompositions.find(p => p.name === grade.name)
+    const studentGrade = Number(grade.grade)
 
-    if (!g || !parem) continue
-    total += (g * Number(parem.percent)) / 100
+    if (!studentGrade || !gradeComposition) continue
+    total += (studentGrade * Number(gradeComposition.percent)) / 100
   }
 
   return total.toFixed(2)

@@ -1,7 +1,7 @@
 import { Entity, model, property } from '@loopback/repository'
 
 @model()
-export class Parem extends Entity {
+export class GradeComposition extends Entity {
   @property({
     type: 'string',
   })
@@ -11,7 +11,14 @@ export class Parem extends Entity {
     type: 'string',
   })
   percent: string
-  constructor(data?: Partial<Parem>) {
+
+  @property({
+    type: 'boolean',
+    default: false 
+  })
+  isFinal: boolean
+  
+  constructor(data?: Partial<GradeComposition>) {
     super(data)
   }
 }
@@ -23,12 +30,12 @@ export class GradeStructure extends Entity {
   })
   total: string
 
-  @property.array(Parem, {
+  @property.array(GradeComposition, {
     postgresql: {
       dataType: 'jsonb',
     },
   })
-  parems: Parem[]
+  gradeCompositions: GradeComposition[]
 
   constructor(data?: Partial<GradeStructure>) {
     super(data)
