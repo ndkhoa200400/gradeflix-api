@@ -1,3 +1,4 @@
+/* eslint-disable @typescript-eslint/naming-convention */
 import { User } from '@loopback/authentication-jwt'
 import { belongsTo, hasMany, model, property } from '@loopback/repository'
 import { GradeStructure } from '.'
@@ -9,9 +10,12 @@ import { TimeStampMixin } from '../../mixins'
 @model({
   settings: {
     indexes: {
-      // eslint-disable-next-line @typescript-eslint/naming-convention
+    
       classroom_host_idx: {
         hostId: 1,
+      },
+      classroom_code_idx: {
+        code: 1,
       },
     },
   },
@@ -32,6 +36,11 @@ export class Classroom extends TimeStampMixin(BaseEntity) {
     type: 'string',
   })
   banner: string
+
+  @property({
+    type: 'string',
+  })
+  code: string
 
   @property({
     type: 'string',

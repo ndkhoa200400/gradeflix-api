@@ -2,7 +2,15 @@ import { authenticate } from '@loopback/authentication'
 import { UserServiceBindings } from '@loopback/authentication-jwt'
 import { Getter, inject, intercept } from '@loopback/core'
 import { repository } from '@loopback/repository'
-import { post, param, getModelSchemaRef, requestBody, response, HttpErrors } from '@loopback/rest'
+import {
+  post,
+  param,
+  getModelSchemaRef,
+  requestBody,
+  response,
+  HttpErrors,
+  get,
+} from '@loopback/rest'
 import { UpdateStudentIdRequest } from '../models'
 import { ClassroomRepository, UserClassroomRepository, UserRepository } from '../repositories'
 import { MyUserService } from '../services'
@@ -78,6 +86,34 @@ export class UserClassroomController {
 
     user.studentId = body.studentId
     await this.userRepository.save(user)
+  }
+
+  @authenticate('jwt')
+  @get('/join-by-code/{code}')
+  @response(201, {
+    description: 'Join a classroom by code',
+  })
+  async joinClassroomByCode(@param.path.string('code') code: string): Promise<void> {
+    const getUser = await this.getCurrentUser()
+    const classroom = await this.classroomRepository.findOne({
+      where: {
+        code: code,
+      },
+    })
+    if (!classroom) throw new HttpErrors['404']('Không tìm thấy lớp học.')
+    const isJoined = await this.userClassroomRepository.count({
+      userId: getUser.id,
+      classroomId: classroom.id,
+    })
+
+    if (isJoined.count) throw new HttpErrors['400']('Bạn đã tham gia lớp này!')
+
+    await this.userClassroomRepository.create({
+      classroomId: classroom.id,
+      userId: getUser.id,
+      userRole: ClassroomRole.STUDENT,
+
+    })
   }
 
   @authenticate('jwt')

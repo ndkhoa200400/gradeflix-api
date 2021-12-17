@@ -78,6 +78,7 @@ export class ClassroomController {
     const user = await this.userRepository.findById(getUser.id)
     classroom.hostId = user.id
     classroom.id = nanoid(8)
+    classroom.code = nanoid(4)
     const res = await this.classroomRepository.create(classroom)
     const result = await this.classroomRepository.findById(res.id, { include: ['host'] })
     return result
@@ -333,12 +334,12 @@ export class ClassroomController {
   }
 
   @authenticate('jwt')
-  @get('/classrooms/{classroomId}/check-join-class')
+  @get('/classrooms/{id}/check-join-class')
   @response(200, {
     description: 'User accepts become teacher',
   })
   async checkJoinedClass(
-    @param.path.string('classroomId') classroomId: string,
+    @param.path.string('id') classroomId: string,
   ): Promise<{ isJoined: boolean }> {
     const getUser = await this.getCurrentUser()
     const user = await this.userRepository.findById(getUser.id)
@@ -360,12 +361,12 @@ export class ClassroomController {
   }
 
   @authenticate('jwt')
-  @post('/classrooms/{classroomId}/accept-invitation/')
+  @post('/classrooms/{id}/accept-invitation/')
   @response(200, {
     description: 'User accepts become teacher',
   })
   async acceptInvitation(
-    @param.path.string('classroomId') classroomId: string,
+    @param.path.string('id') classroomId: string,
     @param.query.string('role') role: ClassroomRole,
     @param.query.string('token') token: string,
   ): Promise<void> {
@@ -403,12 +404,12 @@ export class ClassroomController {
 
   @authenticate('jwt')
   @intercept(AuthenRoleClassroomInterceptor.BINDING_KEY)
-  @post('/classrooms/{classroomId}/send-invitation/')
+  @post('/classrooms/{id}/send-invitation/')
   @response(204, {
     description: 'Send invitation by email',
   })
   async sendInvitation(
-    @param.path.string('classroomId') classroomId: string,
+    @param.path.string('id') classroomId: string,
     @param.query.string('role') role: ClassroomRole,
     @requestBody({
       content: {

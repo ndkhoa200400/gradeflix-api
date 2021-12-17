@@ -17,6 +17,7 @@ export default async function (app: GradeflixApplication) {
     if (!classroom) {
       await classrooms.create({
         id: nanoid(8),
+        code: nanoid(4),
         name: row.name?.toString(),
         hostId: user?.id,
         description: row.description?.toString(),
