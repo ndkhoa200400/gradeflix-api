@@ -14,6 +14,7 @@ import { HttpErrors } from '@loopback/rest'
 import { repository } from '@loopback/repository'
 import { ClassroomRepository, UserClassroomRepository, UserRepository } from '../repositories'
 import { ClassroomRole } from '../constants/role'
+import { NoPermissionError } from '../common/error-hanlder'
 
 /**
  * This class will be bound to the application as an `Interceptor` during
@@ -74,7 +75,7 @@ export class AuthenRoleClassroomInterceptor implements Provider<Interceptor> {
       })
 
       if (classroom.hostId !== getUser.id && !isTeacher) {
-        throw new HttpErrors.Forbidden('Bạn không có quyền thực hiện hành động này.')
+        throw new NoPermissionError()
       }
       // Add post-invocation logic here
       const result = await next()

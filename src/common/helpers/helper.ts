@@ -1,3 +1,4 @@
+import { GradeStructure } from '../../models'
 import { UserRepository } from '../../repositories'
 
 async function checkUniqueStudentId(studentId: string, userRepository: UserRepository) {
@@ -8,4 +9,18 @@ async function checkUniqueStudentId(studentId: string, userRepository: UserRepos
   return countStudentExisted.count === 0
 }
 
-export { checkUniqueStudentId }
+function validateGrade(grade: string, gradeStructure: GradeStructure) {
+  const gradeNumber = Number(grade)
+  const total = Number(gradeStructure.total)
+  if (
+    grade === '' ||
+    Number.isNaN(gradeNumber) ||
+    gradeNumber == null ||
+    gradeNumber < 0 ||
+    gradeNumber > total
+  )
+    return false
+  return true
+}
+
+export { checkUniqueStudentId, validateGrade }

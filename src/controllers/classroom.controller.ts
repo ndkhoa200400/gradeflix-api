@@ -1,5 +1,4 @@
 import { authenticate } from '@loopback/authentication'
-import { UserServiceBindings } from '@loopback/authentication-jwt'
 import { Getter, inject, intercept } from '@loopback/core'
 import {
   Count,
@@ -26,7 +25,7 @@ import {
   UserClassroomRepository,
   UserRepository,
 } from '../repositories'
-import { EmailManager, IEmailRequest, MyUserService } from '../services'
+import { EmailManager, IEmailRequest } from '../services'
 import { UserProfile, SecurityBindings } from '@loopback/security'
 import { ClassroomRole } from '../constants/role'
 import { GetManyClassroomResponse, GetOneClassroomResponse, UserWithRole } from '../models/'
@@ -44,8 +43,6 @@ export class ClassroomController {
     public userClassroomRepository: UserClassroomRepository,
     @repository(UserRepository)
     public userRepository: UserRepository,
-    @inject(UserServiceBindings.USER_SERVICE)
-    public userService: MyUserService,
     @inject.getter(SecurityBindings.USER, { optional: true })
     private getCurrentUser: Getter<UserProfile>,
     @inject(EmailManagerBindings.SEND_MAIL) public emailManager: EmailManager,
@@ -226,7 +223,7 @@ export class ClassroomController {
   @intercept(AuthenRoleClassroomInterceptor.BINDING_KEY)
   @post('/classrooms/{id}/grade-structure')
   @response(204, {
-    description: 'Classroom PATCH success',
+    description: 'Grade Structure of classroom PATCH success',
   })
   async updateGradeStructure(
     @param.path.string('id') id: string,
@@ -251,6 +248,9 @@ export class ClassroomController {
     this.validateGradeStructure(grade)
 
     await this.removeRedundantGrade(classroom, grade)
+    for (const gradeComposition of grade.gradeCompositions) {
+      if (!gradeComposition.isFinal) gradeComposition.isFinal = false
+    }
     classroom.gradeStructure = grade
     const studentList = await this.studentListRepository.find({
       where: {
@@ -423,8 +423,7 @@ export class ClassroomController {
     const getUser = await this.getCurrentUser()
     const user = await this.userRepository.findById(getUser.id)
     role = role ?? ClassroomRole.STUDENT
-    if (role === ClassroomRole.HOST)
-      throw new HttpErrors['403']('Vai trò không hợp lệ.')
+    if (role === ClassroomRole.HOST) throw new HttpErrors['403']('Vai trò không hợp lệ.')
     if (!(role in ClassroomRole)) throw new HttpErrors['400']('Vai trò không hợp lệ.')
 
     const classroom = await this.classroomRepository.findById(classroomId)
@@ -476,7 +475,8 @@ export class ClassroomController {
       throw new HttpErrors['400']('Tổng điểm phải lớn hơn 0')
 
     for (const gradeComposition of grade.gradeCompositions) {
-      if (!Number(gradeComposition.percent)) throw new HttpErrors['400']('Định dạng thang điểm không hợp lệ')
+      if (!Number(gradeComposition.percent))
+        throw new HttpErrors['400']('Định dạng thang điểm không hợp lệ')
       const percent = parseFloat(gradeComposition.percent)
       if (percent < 1) throw new HttpErrors['400']('Thang điểm phải lớn hơn 0')
       total += parseFloat(gradeComposition.percent)
@@ -491,7 +491,9 @@ export class ClassroomController {
   async removeRedundantGrade(classroom: Classroom, newGradeStructure: GradeStructure) {
     if (!classroom.gradeStructure) return
     const currentGradeStructure = classroom.gradeStructure
-    const newGradesName = newGradeStructure.gradeCompositions.map(gradeComposition => gradeComposition.name)
+    const newGradesName = newGradeStructure.gradeCompositions.map(
+      gradeComposition => gradeComposition.name,
+    )
     const redundantGradeNames = currentGradeStructure.gradeCompositions
       .filter(gradeComposition => !newGradesName.includes(gradeComposition.name))
       .map(gradeComposition => gradeComposition.name)

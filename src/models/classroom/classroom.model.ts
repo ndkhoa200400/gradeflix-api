@@ -61,7 +61,7 @@ export class Classroom extends TimeStampMixin(BaseEntity) {
   hostId: number
 
   @property({
-    type: 'object',
+    type: GradeStructure,
     postgresql: {
       dataType: 'jsonb',
     },

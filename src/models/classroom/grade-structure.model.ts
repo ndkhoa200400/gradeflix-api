@@ -34,6 +34,7 @@ export class GradeStructure extends Entity {
     postgresql: {
       dataType: 'jsonb',
     },
+    default: []
   })
   gradeCompositions: GradeComposition[]
 

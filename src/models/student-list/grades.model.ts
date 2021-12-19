@@ -1,3 +1,4 @@
+/* eslint-disable @typescript-eslint/naming-convention */
 import { model, belongsTo, property } from '@loopback/repository'
 
 import { StudentList } from '.'
@@ -7,9 +8,11 @@ import { TimeStampMixin } from '../../mixins'
 @model({
   settings: {
     indexes: {
-      // eslint-disable-next-line @typescript-eslint/naming-convention
       grade_student_list: {
         studentListId: 1,
+      },
+      grade_name: {
+        name: 1,
       },
     },
   },

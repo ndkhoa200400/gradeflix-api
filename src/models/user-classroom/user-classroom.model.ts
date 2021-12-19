@@ -53,6 +53,8 @@ export class UserClassroom extends TimeStampMixin(BaseEntity) {
 
 export interface UserClassroomRelations {
   // describe navigational properties here
+  user: User
+  classroom: Classroom
 }
 
 export type UserClassroomWithRelations = UserClassroom & UserClassroomRelations

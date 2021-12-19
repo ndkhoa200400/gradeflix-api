@@ -16,7 +16,6 @@ import {
 } from '@loopback/rest'
 import {
   Grades,
-  GradeStructure,
   StudentList,
   StudentListResponse,
   UploadFileResponse,
@@ -37,6 +36,7 @@ import * as XLSX from 'xlsx'
 import { CheckJoinClassroomInterceptor } from '../interceptors/'
 import { StudentListHeaders } from '../constants/student-list-header'
 import calculateTotal from '../common/helpers/calculate-grade-total'
+import { validateGrade } from '../common/helpers'
 
 @authenticate('jwt')
 export class StudentListController {
@@ -258,7 +258,7 @@ export class StudentListController {
       },
     })
 
-    if (!this.validateGrade(body.newGrade, gradeStructure))
+    if (!validateGrade(body.newGrade, gradeStructure))
       throw new HttpErrors['400']('Điểm không hợp lệ. Vui lòng kiểm tra lại.')
 
     // Nếu chưa có điểm => tạo
@@ -381,7 +381,7 @@ export class StudentListController {
       })
       if (!student) continue
       // Điểm lỗi
-      if (!this.validateGrade(studentInfo[1], gradeStructure)) {
+      if (!validateGrade(studentInfo[1], gradeStructure)) {
         console.log('Grade is invalid', studentInfo)
 
         errorList.push(studentInfo[0])
@@ -452,20 +452,6 @@ export class StudentListController {
       }
     }
     return { files, fields: request.body }
-  }
-
-  private validateGrade(grade: string, gradeStructure: GradeStructure) {
-    const gradeNumber = Number(grade)
-    const total = Number(gradeStructure.total)
-    if (
-      grade === '' ||
-      Number.isNaN(gradeNumber) ||
-      gradeNumber == null ||
-      gradeNumber < 0 ||
-      gradeNumber > total
-    )
-      return false
-    return true
   }
 
   private mapFileToJson(workbook: XLSX.WorkBook): string[][] {

@@ -13,6 +13,7 @@ import { UserProfile, SecurityBindings } from '@loopback/security'
 import { RestBindings, Request, HttpErrors } from '@loopback/rest'
 import { repository } from '@loopback/repository'
 import { ClassroomRepository, UserClassroomRepository, UserRepository } from '../repositories'
+import { NoPermissionError } from '../common/error-hanlder'
 
 /**
  * This class will be bound to the application as an `Interceptor` during
@@ -72,7 +73,7 @@ export class CheckJoinClassroomInterceptor implements Provider<Interceptor> {
       })
 
       if (classroom.hostId !== getUser.id && !isJoined) {
-        throw new HttpErrors.Forbidden('Bạn không có quyền thực hiện hành động này.')
+        throw new NoPermissionError()
       }
       // Add post-invocation logic here
       return result

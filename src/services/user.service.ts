@@ -10,6 +10,7 @@ import { BcryptHasher } from './hash-password.service'
 import { securityId, UserProfile } from '@loopback/security'
 import { genSalt, hash } from 'bcryptjs'
 import { verify } from '../common/helpers'
+import { NoPermissionError } from '../common/error-hanlder'
 export class MyUserService implements UserService<User, LoginReq> {
   constructor(
     @repository(UserRepository)
@@ -33,7 +34,7 @@ export class MyUserService implements UserService<User, LoginReq> {
     }
     const { password = '' } = foundUser
 
-    if (!password) throw new HttpErrors.Forbidden('Bạn không có quyền truy cập.')
+    if (!password) throw new NoPermissionError('Bạn không có quyền truy cập')
     const passwordMatched = await this.hasher.comparePassword(credentials.password!, password)
     if (!passwordMatched) {
       throw new HttpErrors.Unauthorized('Mật khẩu không chính xác.')

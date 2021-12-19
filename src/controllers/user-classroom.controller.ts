@@ -19,6 +19,7 @@ import { ClassroomRole } from '../constants/role'
 import { AuthenRoleClassroomInterceptor } from '../interceptors'
 import { CheckJoinClassroomInterceptor } from '../interceptors/'
 import { checkUniqueStudentId } from '../common/helpers'
+import { NoPermissionError } from '../common/error-hanlder'
 export class UserClassroomController {
   constructor(
     @repository(ClassroomRepository)
@@ -66,7 +67,7 @@ export class UserClassroomController {
 
     // Check if current user is not a teacher or not the one wants to change self id
     if (!teacher.count && getUser.id !== userId) {
-      throw new HttpErrors.Forbidden('Bạn không có quyền thực hiện hành động này.')
+      throw new NoPermissionError()
     }
 
     // the student whose student id is changed
@@ -129,7 +130,7 @@ export class UserClassroomController {
         userId: getUser.id,
       },
     })
-    if (!userClassroom) throw new HttpErrors.Forbidden('Bạn không có quyền truy cập')
+    if (!userClassroom) throw new NoPermissionError()
     const classroom = await this.classroomRepository.findById(classroomId)
 
     if (classroom.hostId === getUser.id)
@@ -166,7 +167,7 @@ export class UserClassroomController {
     const isHost = classroom.hostId === getUser.id
 
     if (user.userRole === ClassroomRole.TEACHER) {
-      if (!isHost) throw new HttpErrors.Forbidden('Bạn không có quyền thực hiện hành động này.')
+      if (!isHost) throw new NoPermissionError()
     }
     await this.userClassroomRepository.deleteById(user.id)
   }
