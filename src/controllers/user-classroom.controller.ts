@@ -11,7 +11,7 @@ import {
   HttpErrors,
   get,
 } from '@loopback/rest'
-import { UpdateStudentIdRequest } from '../models'
+import { Classroom, UpdateStudentIdRequest } from '../models'
 import { ClassroomRepository, UserClassroomRepository, UserRepository } from '../repositories'
 import { MyUserService } from '../services'
 import { UserProfile, SecurityBindings } from '@loopback/security'
@@ -91,15 +91,17 @@ export class UserClassroomController {
 
   @authenticate('jwt')
   @get('/join-by-code/{code}')
-  @response(201, {
+  @response(200, {
     description: 'Join a classroom by code',
   })
-  async joinClassroomByCode(@param.path.string('code') code: string): Promise<void> {
+  async joinClassroomByCode(@param.path.string('code') code: string): Promise<Classroom> {
     const getUser = await this.getCurrentUser()
     const classroom = await this.classroomRepository.findOne({
       where: {
         code: code,
       },
+      include: ['host']
+
     })
     if (!classroom) throw new HttpErrors['404']('Không tìm thấy lớp học.')
     const isJoined = await this.userClassroomRepository.count({
@@ -115,10 +117,12 @@ export class UserClassroomController {
       userRole: ClassroomRole.STUDENT,
 
     })
+
+    return classroom
   }
 
   @authenticate('jwt')
-  @post('/classrooms/{classroomId}/users/leave')
+  @post('/classrooms/{classroomId}/leave')
   @response(204, {
     description: 'User leaves a clasroom',
   })
