@@ -168,7 +168,6 @@ export class UserController {
 
       if (!isUnique) throw new HttpErrors['400']('Mã số sinh viên đã tồn tại')
     }
-
     Object.assign(user, userBody)
 
     return this.userRepository.save(user)
