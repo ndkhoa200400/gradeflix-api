@@ -4,6 +4,7 @@ import { config } from 'dotenv'
 import dotenvExpand from 'dotenv-expand'
 import { ApplicationConfig } from '@loopback/core'
 
+
 const init = () => {
   const env = config()
   dotenvExpand(env)
@@ -16,12 +17,26 @@ init()
 
 export async function main(options: ApplicationConfig = {}) {
   const app = new GradeflixApplication(options)
+  
   await app.boot()
   await app.start()
+  // const io = require('socket.io')();
 
   const url = app.restServer.url
   console.log(`Server is running at ${url}`)
   console.log(`Try ${url}/ping`)
+
+  // // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  // io.on('connection', (socket: any) => {
+  //   console.log('ngon')
+  //   socket.emit('a', {test: 'test'})
+
+
+  //   socket.on("message", async (message: string) => {
+  //     console.log(`${message}`)
+  //   });
+  // })
+  // io.listen(3004)
 
   return app
 }
@@ -41,7 +56,7 @@ if (require.main === module) {
       openApiSpec: {
         // useful when used with OpenAPI-to-GraphQL to locate your application
         setServersFromRequest: true,
-      }
+      },
     },
   }
   main(configApplication).catch(err => {

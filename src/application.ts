@@ -8,7 +8,12 @@ import { ServiceMixin } from '@loopback/service-proxy'
 import { AuthenticationComponent, registerAuthenticationStrategy } from '@loopback/authentication'
 import { RestExplorerBindings, RestExplorerComponent } from '@loopback/rest-explorer'
 import { JWTAuthenticationComponent } from '@loopback/authentication-jwt'
-import { EmailManagerBindings, PasswordHasherBindings, TokenServiceBindings, UserServiceBindings } from './keys'
+import {
+  EmailManagerBindings,
+  PasswordHasherBindings,
+  TokenServiceBindings,
+  UserServiceBindings,
+} from './keys'
 import { BcryptHasher } from './services/hash-password.service'
 import { EmailService, JWTService, MyUserService } from './services'
 import { JWTStrategy } from './authenticate-strategy/jwt.strategy'
@@ -52,7 +57,7 @@ export class GradeflixApplication extends BootMixin(
     this.bind(PasswordHasherBindings.PASSWORD_HASHER).toClass(BcryptHasher)
     this.bind(PasswordHasherBindings.ROUNDS).to(10)
     this.bind(UserServiceBindings.USER_SERVICE).toClass(MyUserService)
-    this.bind(TokenServiceBindings.TOKEN_SERVICE).toClass(JWTService);
+    this.bind(TokenServiceBindings.TOKEN_SERVICE).toClass(JWTService)
     this.bind(EmailManagerBindings.SEND_MAIL).toClass(EmailService)
   }
 }
