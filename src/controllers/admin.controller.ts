@@ -1,5 +1,5 @@
 import { authenticate } from '@loopback/authentication'
-import { Getter, inject, intercept } from '@loopback/core'
+import { inject, intercept } from '@loopback/core'
 import { Count, CountSchema, repository } from '@loopback/repository'
 import {
   post,
@@ -18,9 +18,9 @@ import {
   UserClassroomRepository,
   UserRepository,
 } from '../repositories'
-import { UserProfile, SecurityBindings } from '@loopback/security'
 import { AuthenAdminRoleInterceptor } from '../interceptors/authen-admin-role.interceptor'
 import { ClassroomRole } from '../constants/role'
+import { SocketIoService } from '../services'
 @authenticate('jwt')
 @intercept(AuthenAdminRoleInterceptor.BINDING_KEY)
 export class AdmminController {
@@ -31,12 +31,12 @@ export class AdmminController {
     public userClassroomRepository: UserClassroomRepository,
     @repository(UserRepository)
     public userRepository: UserRepository,
-    @inject.getter(SecurityBindings.USER, { optional: true })
-    private getCurrentUser: Getter<UserProfile>,
     @repository(StudentListRepository)
     public studentListRepository: StudentListRepository,
     @repository(GradesRepository)
     public gradesRepository: GradesRepository,
+    @inject('services.socketio')
+    public socketIoService: SocketIoService
   ) {}
 
   // Classroom management

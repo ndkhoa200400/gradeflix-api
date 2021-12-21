@@ -2,8 +2,9 @@ import { GradeflixApplication } from './application'
 
 import { config } from 'dotenv'
 import dotenvExpand from 'dotenv-expand'
-import { ApplicationConfig } from '@loopback/core'
-
+import { ApplicationConfig, BindingScope } from '@loopback/core'
+import { SocketIoService } from './services'
+import { SOCKETIO_SERVICE } from './keys'
 
 const init = () => {
   const env = config()
@@ -17,11 +18,15 @@ init()
 
 export async function main(options: ApplicationConfig = {}) {
   const app = new GradeflixApplication(options)
-  
+
   await app.boot()
   await app.start()
   // const io = require('socket.io')();
-
+  const io = new SocketIoService()
+  app
+    .bind(SOCKETIO_SERVICE)
+    .toDynamicValue(() => io)
+    .inScope(BindingScope.SINGLETON)
   const url = app.restServer.url
   console.log(`Server is running at ${url}`)
   console.log(`Try ${url}/ping`)
@@ -30,7 +35,6 @@ export async function main(options: ApplicationConfig = {}) {
   // io.on('connection', (socket: any) => {
   //   console.log('ngon')
   //   socket.emit('a', {test: 'test'})
-
 
   //   socket.on("message", async (message: string) => {
   //     console.log(`${message}`)
