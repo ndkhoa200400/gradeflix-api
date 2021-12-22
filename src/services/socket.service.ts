@@ -11,7 +11,9 @@ export interface OnlineUser {
 
 @injectable({ scope: BindingScope.SINGLETON, tags: { [ContextTags.KEY]: SOCKETIO_SERVICE } })
 export class SocketIoService {
-  public io = require('socket.io')()
+  public io = require('socket.io')({
+    cors: { methods: '*', origin: '*', allowedHeaders: '*' },
+  })
 
   public users: OnlineUser[] = []
   constructor() {
@@ -28,6 +30,11 @@ export class SocketIoService {
       socket.on('disconnect', () => {
         this.removeUser(socket.id)
       })
+
+
+      socket.on('logOut', () => {
+        this.removeUser(socket.id)
+      })
     })
     this.io.listen(process.env.SOCKET_PORT)
     console.log(`Socket listening on PORT ${process.env.SOCKET_PORT}`)
@@ -38,10 +45,12 @@ export class SocketIoService {
   }
 
   public addUser(userId: number, socketId: string) {
-    this.users.push({
-      userId,
-      socketId,
-    })
+     if (!this.users.find(user => user.userId === userId)) {
+      this.users.push({
+        userId,
+        socketId,
+      })
+    }
   }
 
   public getUser(userId: number): OnlineUser | null {
