@@ -1,3 +1,4 @@
+/* eslint-disable @typescript-eslint/no-floating-promises */
 import { inject, intercept } from '@loopback/core'
 import { Getter, repository } from '@loopback/repository'
 import {
@@ -9,12 +10,13 @@ import {
   response,
   HttpErrors,
 } from '@loopback/rest'
-import { Classroom, CommentOnReview } from '../models'
+import { Classroom, CommentOnReview, Notification } from '../models'
 import {
   ClassroomRepository,
   CommentOnReviewRepository,
   GradeReviewRepository,
   GradesRepository,
+  NotificationRepository,
   StudentListRepository,
   UserClassroomRepository,
   UserRepository,
@@ -28,6 +30,7 @@ import {
   NoPermissionError,
   StudentIdRequiredError,
 } from '../common/error-hanlder'
+import { SocketIoService } from '../services'
 
 @authenticate('jwt')
 export class CommentOnReviewController {
@@ -48,6 +51,10 @@ export class CommentOnReviewController {
     public classroomRepository: ClassroomRepository,
     @repository(CommentOnReviewRepository)
     public commentOnReviewRepository: CommentOnReviewRepository,
+    @repository(NotificationRepository)
+    public notificationRepository: NotificationRepository,
+    @inject('services.socketio')
+    public socketIoService: SocketIoService,
   ) {}
 
   @post('/classrooms/{classroomId}/grade-reviews/{gradeReviewId}/comments')
@@ -73,8 +80,29 @@ export class CommentOnReviewController {
   ): Promise<CommentOnReview> {
     const getUser = await this.getCurrentUser()
 
-    await this.validateGardeReviewRole(gradeReviewId, classroomId, getUser.id)
+    await this.validateGradeReviewRole(gradeReviewId, classroomId, getUser.id)
 
+    const gradeReview = await this.gradeReviewRepository.findById(gradeReviewId)
+
+    const student = await this.userRepository.findOne({
+      where: {
+        studentId: gradeReview.studentId,
+      },
+    })
+    if (!student)
+      throw new HttpErrors['404'](`Không tìm thấy sinh viên với mã số ${gradeReview.studentId}.`)
+    const currentUser = await this.userRepository.findById(getUser.id)
+    if (getUser.id !== student) {
+      const notification = await this.notificationRepository.create(
+        new Notification({
+          content: `Giáo viên ${currentUser.fullname} đã bình luận vào đơn phúc khảo của bạn.`,
+          link: `/classrooms/${classroomId}/grade-review/${gradeReview.id}`,
+          userId: student.id,
+        }),
+      )
+
+      this.socketIoService.sendNotification(student.id, notification)
+    }
     return this.commentOnReviewRepository.create({
       ...commentOnReviewRequestBody,
       userId: getUser.id,
@@ -106,15 +134,13 @@ export class CommentOnReviewController {
     const getUser = await this.getCurrentUser()
 
     // check if user owns that grade review or user is teacher or host
-    await this.validateGardeReviewRole(gradeReviewId, classroomId, getUser.id)
-
-
+    await this.validateGradeReviewRole(gradeReviewId, classroomId, getUser.id)
 
     const comment = await this.commentOnReviewRepository.findOne({
-      where:{
+      where: {
         gradeReviewId: gradeReviewId,
-        id: commentId
-      }
+        id: commentId,
+      },
     })
     if (!comment) throw new HttpErrors['404']('Không tìm thấy bình luận.')
     Object.assign(comment, commentOnReviewRequestBody)
@@ -185,7 +211,7 @@ export class CommentOnReviewController {
    * @param userClassroom
    * @param userId
    */
-  async validateGardeReviewRole(gradeReviewId: number, classroomId: string, userId: number) {
+  async validateGradeReviewRole(gradeReviewId: number, classroomId: string, userId: number) {
     const gradeReview = await this.gradeReviewRepository.findOne({
       where: {
         id: gradeReviewId,

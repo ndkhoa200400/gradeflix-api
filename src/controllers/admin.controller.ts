@@ -1,5 +1,5 @@
 import { authenticate } from '@loopback/authentication'
-import { Getter, inject, intercept } from '@loopback/core'
+import { inject, intercept } from '@loopback/core'
 import { Count, CountSchema, repository } from '@loopback/repository'
 import {
   post,
@@ -10,20 +10,21 @@ import {
   response,
   HttpErrors,
 } from '@loopback/rest'
-import { Classroom, GetOneClassroomResponse, User, UserWithRole } from '../models'
+import { Classroom, GetOneClassroomResponse, Notification, User, UserWithRole } from '../models'
 import {
   ClassroomRepository,
   GradesRepository,
+  NotificationRepository,
   StudentListRepository,
   UserClassroomRepository,
   UserRepository,
 } from '../repositories'
-import { UserProfile, SecurityBindings } from '@loopback/security'
 import { AuthenAdminRoleInterceptor } from '../interceptors/authen-admin-role.interceptor'
 import { ClassroomRole } from '../constants/role'
+import { SocketIoService } from '../services'
 @authenticate('jwt')
 @intercept(AuthenAdminRoleInterceptor.BINDING_KEY)
-export class AdmminController {
+export class AdminController {
   constructor(
     @repository(ClassroomRepository)
     public classroomRepository: ClassroomRepository,
@@ -31,12 +32,14 @@ export class AdmminController {
     public userClassroomRepository: UserClassroomRepository,
     @repository(UserRepository)
     public userRepository: UserRepository,
-    @inject.getter(SecurityBindings.USER, { optional: true })
-    private getCurrentUser: Getter<UserProfile>,
     @repository(StudentListRepository)
     public studentListRepository: StudentListRepository,
     @repository(GradesRepository)
     public gradesRepository: GradesRepository,
+    @repository(NotificationRepository)
+    public notificationRepository: NotificationRepository,
+    @inject('services.socketio')
+    public socketIoService: SocketIoService,
   ) {}
 
   // Classroom management
@@ -256,5 +259,44 @@ export class AdmminController {
     }
     Object.assign(user, userRequestBody)
     return this.userRepository.save(user)
+  }
+
+  // Notification
+  @post('admin/notifications/users/{id}')
+  @response(200, {
+    description: 'Update information of classroom',
+    content: {
+      'application/json': {
+        schema: getModelSchemaRef(Notification),
+      },
+    },
+  })
+  async sendNotification(
+    @param.path.number('id') id: number,
+    @requestBody({
+      content: {
+        'application/json': {
+          schema: getModelSchemaRef(Notification, {
+            partial: true,
+          }),
+        },
+      },
+    })
+    notificationRequestBody: Notification,
+  ): Promise<Notification> {
+    const user = await this.userRepository.findOne({
+      where: {
+        id: id,
+      },
+    })
+    if (!user) throw new HttpErrors.NotFound(`Không tìm thấy người dùng ${id}.`)
+    const notification = await this.notificationRepository.create({
+      ...notificationRequestBody,
+      userId: user.id,
+    })
+    // eslint-disable-next-line @typescript-eslint/no-floating-promises
+    this.socketIoService.sendNotification(user.id, notification)
+
+    return notification
   }
 }
