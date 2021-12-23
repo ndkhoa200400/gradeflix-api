@@ -10,10 +10,11 @@ import {
   response,
   HttpErrors,
 } from '@loopback/rest'
-import { Classroom, GetOneClassroomResponse, User, UserWithRole } from '../models'
+import { Classroom, GetOneClassroomResponse, Notification, User, UserWithRole } from '../models'
 import {
   ClassroomRepository,
   GradesRepository,
+  NotificationRepository,
   StudentListRepository,
   UserClassroomRepository,
   UserRepository,
@@ -23,7 +24,7 @@ import { ClassroomRole } from '../constants/role'
 import { SocketIoService } from '../services'
 @authenticate('jwt')
 @intercept(AuthenAdminRoleInterceptor.BINDING_KEY)
-export class AdmminController {
+export class AdminController {
   constructor(
     @repository(ClassroomRepository)
     public classroomRepository: ClassroomRepository,
@@ -35,8 +36,10 @@ export class AdmminController {
     public studentListRepository: StudentListRepository,
     @repository(GradesRepository)
     public gradesRepository: GradesRepository,
+    @repository(NotificationRepository)
+    public notificationRepository: NotificationRepository,
     @inject('services.socketio')
-    public socketIoService: SocketIoService
+    public socketIoService: SocketIoService,
   ) {}
 
   // Classroom management
@@ -256,5 +259,44 @@ export class AdmminController {
     }
     Object.assign(user, userRequestBody)
     return this.userRepository.save(user)
+  }
+
+  // Notification
+  @post('admin/notifications/users/{id}')
+  @response(200, {
+    description: 'Update information of classroom',
+    content: {
+      'application/json': {
+        schema: getModelSchemaRef(Notification),
+      },
+    },
+  })
+  async sendNotification(
+    @param.path.number('id') id: number,
+    @requestBody({
+      content: {
+        'application/json': {
+          schema: getModelSchemaRef(Notification, {
+            partial: true,
+          }),
+        },
+      },
+    })
+    notificationRequestBody: Notification,
+  ): Promise<Notification> {
+    const user = await this.userRepository.findOne({
+      where: {
+        id: id,
+      },
+    })
+    if (!user) throw new HttpErrors.NotFound(`Không tìm thấy người dùng ${id}.`)
+    const notification = await this.notificationRepository.create({
+      ...notificationRequestBody,
+      userId: user.id,
+    })
+    // eslint-disable-next-line @typescript-eslint/no-floating-promises
+    this.socketIoService.sendNotification(user.id, notification)
+
+    return notification
   }
 }

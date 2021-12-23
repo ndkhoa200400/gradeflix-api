@@ -9,11 +9,20 @@ import {
   response,
   HttpErrors,
 } from '@loopback/rest'
-import { FinalGradeRequest, Grade, GradeReview, User, UserClassroom, UserClassroomRelations } from '../models'
+import {
+  FinalGradeRequest,
+  Grade,
+  GradeReview,
+  Notification,
+  User,
+  UserClassroom,
+  UserClassroomRelations,
+} from '../models'
 import {
   ClassroomRepository,
   GradeReviewRepository,
   GradesRepository,
+  NotificationRepository,
   StudentListRepository,
   UserClassroomRepository,
   UserRepository,
@@ -24,7 +33,8 @@ import { authenticate } from '@loopback/authentication'
 import { ClassroomRole } from '../constants/role'
 import { GradeReviewStatus } from '../constants/status'
 import { validateGrade } from '../common/helpers'
-import { StudentIdRequiredError } from '../common/error-hanlder'
+import { GradeReviewNotFoundError, StudentIdRequiredError } from '../common/error-hanlder'
+import { SocketIoService } from '../services'
 
 @authenticate('jwt')
 export class GradeReviewController {
@@ -43,6 +53,10 @@ export class GradeReviewController {
     public userClassroomRepository: UserClassroomRepository,
     @repository(ClassroomRepository)
     public classroomRepository: ClassroomRepository,
+    @repository(NotificationRepository)
+    public notificationRepository: NotificationRepository,
+    @inject('services.socketio')
+    public socketIoService: SocketIoService,
   ) {}
 
   @post('/classrooms/{id}/grade-reviews')
@@ -185,7 +199,7 @@ export class GradeReviewController {
         userId: getUser.id,
       },
       include: ['user', 'classroom'],
-    })) as (UserClassroom & UserClassroomRelations)
+    })) as UserClassroom & UserClassroomRelations
 
     if (
       userClassroom.userRole === ClassroomRole.TEACHER ||
@@ -231,7 +245,7 @@ export class GradeReviewController {
         classroomId: classroomId,
       },
     })
-    if (!gradeReview) throw new HttpErrors['404'](`Không tìm thấy đơn khiếu nại.`)
+    if (!gradeReview) throw new GradeReviewNotFoundError()
 
     const studentList = await this.studentListRepository.findOne({
       where: {
@@ -262,6 +276,30 @@ export class GradeReviewController {
 
     gradeReview.status = GradeReviewStatus.FINAL
     grade.grade = finalGradeRequestBody.grade
+
+    // Send notifications to all students in class
+    const students = await this.userClassroomRepository.find({
+      where: {
+        classroomId: classroom.id,
+        userRole: ClassroomRole.STUDENT,
+      },
+    })
+    const notifications: Notification[] = []
+    for (const student of students) {
+      notifications.push(
+        new Notification({
+          content: `Lớp ${classroom.name} đã có điểm tổng kết`,
+          link: `/classrooms/${classroom.id}/tab-grade/`,
+          userId: student.id,
+        }),
+      )
+    }
+
+    const notificationsResponse = await this.notificationRepository.createAll(notifications)
+    for (const notification of notificationsResponse) {
+      // eslint-disable-next-line @typescript-eslint/no-floating-promises
+      this.socketIoService.sendMessage(notification.userId, notification.content)
+    }
     await this.gradesRepository.save(grade)
     return this.gradeReviewRepository.save(gradeReview)
   }

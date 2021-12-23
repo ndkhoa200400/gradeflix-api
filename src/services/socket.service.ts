@@ -2,6 +2,7 @@
 
 import { BindingScope, ContextTags, injectable } from '@loopback/core'
 import { SOCKETIO_SERVICE } from '../keys'
+import { Notification } from '../models'
 
 export interface OnlineUser {
   userId: number
@@ -18,6 +19,7 @@ export class SocketIoService {
   public users: OnlineUser[] = []
   constructor() {
     this.io.on('connection', (socket: any) => {
+      console.log('New connection ' + socket.id)
       socket.on('message', async (message: string) => {
         console.log(`${message}`)
       })
@@ -28,9 +30,9 @@ export class SocketIoService {
       })
 
       socket.on('disconnect', () => {
+        console.log(`${socket.id} has left`)
         this.removeUser(socket.id)
       })
-
 
       socket.on('logOut', () => {
         this.removeUser(socket.id)
@@ -45,7 +47,7 @@ export class SocketIoService {
   }
 
   public addUser(userId: number, socketId: string) {
-     if (!this.users.find(user => user.userId === userId)) {
+    if (!this.users.find(user => user.userId === userId)) {
       this.users.push({
         userId,
         socketId,
@@ -57,13 +59,20 @@ export class SocketIoService {
     return this.users.find(user => user.userId === userId) ?? null
   }
 
-  public sendMessage(userId: number, message: string) {
+  async sendMessage(userId: number, message: string) {
     const getUser = this.getUser(userId)
     this.io.to(getUser?.socketId).emit('message', message)
   }
 
-  async sendNotification(userId: number, message: string): Promise<void> {
+  async sendNotification(userId: number, notification: Notification): Promise<void> {
     const getUser = this.getUser(userId)
-    this.io.to(getUser?.socketId).emit('notification', message)
+    this.io.to(getUser?.socketId).emit('notification', notification)
+  }
+
+  async sendMultipleNotifications(userIds: number[], notification: Notification): Promise<void> {
+    for (const userId of userIds) {
+      const getUser = this.getUser(userId)
+      this.io.to(getUser?.socketId).emit('notification', notification)
+    }
   }
 }
