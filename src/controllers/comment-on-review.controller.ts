@@ -10,7 +10,7 @@ import {
   response,
   HttpErrors,
 } from '@loopback/rest'
-import { Classroom, CommentOnReview, Notification } from '../models'
+import { Classroom, CommentOnReview, Notification, User } from '../models'
 import {
   ClassroomRepository,
   CommentOnReviewRepository,
@@ -93,21 +93,64 @@ export class CommentOnReviewController {
       throw new HttpErrors['404'](`Không tìm thấy sinh viên với mã số ${gradeReview.studentId}.`)
     const currentUser = await this.userRepository.findById(getUser.id)
     if (getUser.id !== student) {
-      const notification = await this.notificationRepository.create(
-        new Notification({
-          content: `Giáo viên ${currentUser.fullname} đã bình luận vào đơn phúc khảo của bạn.`,
-          link: `/classrooms/${classroomId}/grade-review/${gradeReview.id}`,
-          userId: student.id,
-        }),
-      )
-
-      this.socketIoService.sendNotification(student.id, notification)
+      this.notifyNewCommentToStudent(classroomId, currentUser.fullname, gradeReviewId, student)
+    } else {
+      this.notifyNewCommentToTeachers(classroomId, student)
     }
     return this.commentOnReviewRepository.create({
       ...commentOnReviewRequestBody,
       userId: getUser.id,
       gradeReviewId: gradeReviewId,
     })
+  }
+
+  async notifyNewCommentToStudent(
+    classroomId: string,
+    teacherName: string,
+    gradeReviewId: number,
+    student: User,
+  ) {
+    const classroom = await this.classroomRepository.findById(classroomId)
+    const notification = await this.notificationRepository.create(
+      new Notification({
+        content: `Giáo viên ${teacherName} đã bình luận vào đơn phúc khảo ở lớp ${classroom.name}.`,
+        link: `/classrooms/${classroom.id}/grade-review/${gradeReviewId}`,
+        userId: student.id,
+      }),
+    )
+
+    this.socketIoService.sendNotification(student.id, notification)
+  }
+  async notifyNewCommentToTeachers(classroomId: string, student: User) {
+    const classroom = await this.classroomRepository.findById(classroomId)
+
+    const teachers = await this.userClassroomRepository.find({
+      where: {
+        classroomId: classroom.id,
+        userRole: ClassroomRole.TEACHER,
+      },
+    })
+    const notifications: Notification[] = []
+
+    for (const teacher of teachers) {
+      const notification = new Notification({
+        content: `Học sinh ${student.fullname} đã bình luận vào đơn phúc khảo ở lớp ${classroom.name}`,
+        link: `/classrooms/${classroom.id}/grade-review`,
+        userId: teacher.userId,
+      })
+      notifications.push(notification)
+    }
+    // for host
+    const notificationForhost = new Notification({
+      content: `Học sinh ${student.fullname} yêu cầu phúc khảo ở lớp ${classroom.name}`,
+      link: `/classrooms/${classroom.id}/grade-review`,
+      userId: classroom.hostId,
+    })
+    notifications.push(notificationForhost)
+    const notificationsResponse = await this.notificationRepository.createAll(notifications)
+    for (const notification of notificationsResponse) {
+      await this.socketIoService.sendNotification(notification.userId, notification)
+    }
   }
 
   @post('/classrooms/{classroomId}/grade-reviews/{gradeReviewId}/comments/{commentId}')

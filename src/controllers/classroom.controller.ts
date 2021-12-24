@@ -17,15 +17,16 @@ import {
   response,
   HttpErrors,
 } from '@loopback/rest'
-import { Classroom, GradeStructure, SendInvitationRequest } from '../models'
+import { Classroom, GradeStructure, Notification, SendInvitationRequest } from '../models'
 import {
   ClassroomRepository,
   GradesRepository,
+  NotificationRepository,
   StudentListRepository,
   UserClassroomRepository,
   UserRepository,
 } from '../repositories'
-import { EmailManager, IEmailRequest } from '../services'
+import { EmailManager, IEmailRequest, SocketIoService } from '../services'
 import { UserProfile, SecurityBindings } from '@loopback/security'
 import { ClassroomRole } from '../constants/role'
 import { GetManyClassroomResponse, GetOneClassroomResponse, UserWithRole } from '../models/'
@@ -50,6 +51,10 @@ export class ClassroomController {
     public studentListRepository: StudentListRepository,
     @repository(GradesRepository)
     public gradesRepository: GradesRepository,
+    @repository(NotificationRepository)
+    public notificationRepository: NotificationRepository,
+    @inject('services.socketio')
+    public socketIoService: SocketIoService,
   ) {}
 
   @authenticate('jwt')
@@ -248,8 +253,41 @@ export class ClassroomController {
     this.validateGradeStructure(grade)
 
     await this.removeRedundantGrade(classroom, grade)
+    const students = await this.userClassroomRepository.find({
+      where: {
+        classroomId: classroom.id,
+        userRole: ClassroomRole.STUDENT,
+      },
+    })
     for (const gradeComposition of grade.gradeCompositions) {
-      if (!gradeComposition.isFinal) gradeComposition.isFinal = false
+      gradeComposition.isFinal = gradeComposition.isFinal ?? false
+
+      // check if new grade composition is marked as final
+      // then notify to students
+      if (classroom.gradeStructure) {
+        const currentGradeComposition = classroom.gradeStructure.gradeCompositions.find(item => {
+          if (item.name === gradeComposition.name) {
+            return item
+          }
+        })
+        if (currentGradeComposition) {
+          if (gradeComposition.isFinal === true && currentGradeComposition.isFinal === false) {
+            // Send notifications to all students in class
+            const notifications: Notification[] = []
+            for (const student of students) {
+              notifications.push(
+                new Notification({
+                  content: `Lớp ${classroom.name} đã có điểm ${gradeComposition.name}`,
+                  link: `/classrooms/${classroom.id}/tab-my-info/`,
+                  userId: student.userId,
+                }),
+              )
+            }
+            // eslint-disable-next-line @typescript-eslint/no-floating-promises
+            this.notifyToStudents(notifications)
+          }
+        }
+      }
     }
     classroom.gradeStructure = grade
     const studentList = await this.studentListRepository.find({
@@ -258,9 +296,11 @@ export class ClassroomController {
       },
       include: ['grades'],
     })
+
+    // Calculate total
     for (const student of studentList) {
       const total = calculateTotal(student.grades, classroom.gradeStructure).toString()
-
+      // If total is different from the previous one => update
       if (total !== student.total) {
         student.total = total
         await this.studentListRepository.updateById(student.id, { total: student.total })
@@ -268,6 +308,13 @@ export class ClassroomController {
     }
 
     return this.classroomRepository.save(classroom)
+  }
+
+  async notifyToStudents(notifications: Notification[]) {
+    const notificationsResponse = await this.notificationRepository.createAll(notifications)
+    for (const notification of notificationsResponse) {
+      await this.socketIoService.sendNotification(notification.userId, notification)
+    }
   }
 
   @authenticate('jwt')
@@ -325,10 +372,7 @@ export class ClassroomController {
     if (classroom.hostId !== getUser.id && !isTeacher) {
       throw new HttpErrors.Unauthorized('Bạn không được quyền sửa thông tin lớp học.')
     }
-    // if (classroomBody.barem) {
-    //   const isBaremValid = this.validateBarem(classroomBody.barem)
-    //   if (!isBaremValid) throw new HttpErrors['400']('Barem điểm không hợp lệ!')
-    // }
+
     Object.assign(classroom, classroomBody)
     return this.classroomRepository.save(classroom)
   }
