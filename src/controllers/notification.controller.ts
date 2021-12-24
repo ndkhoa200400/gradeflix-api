@@ -119,4 +119,32 @@ export class NotificationController {
     }
     return notification
   }
+
+  @get('/notifications/mark-all-read')
+  @response(200, {
+    description: 'Mark notification read',
+    content: {
+      'application/json': {
+        schema: getModelSchemaRef(Notification),
+      },
+    },
+  })
+  async markAllAsRead(): Promise<Notification[]> {
+    const getUser = await this.getCurrentUser()
+
+    await this.notificationRepository.updateAll(
+      {
+        isRead: true,
+      },
+      {
+        userId: getUser.id,
+      },
+    )
+    const notifications = await this.notificationRepository.find({
+      where: {
+        userId: getUser.id,
+      },
+    })
+    return notifications
+  }
 }

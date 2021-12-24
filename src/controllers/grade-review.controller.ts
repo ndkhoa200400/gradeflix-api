@@ -1,3 +1,4 @@
+/* eslint-disable @typescript-eslint/no-floating-promises */
 import { inject, intercept } from '@loopback/core'
 import { Getter, repository } from '@loopback/repository'
 import {
@@ -129,7 +130,45 @@ export class GradeReviewController {
     gradeReviewRequestBody.studentId = user.studentId
     gradeReviewRequestBody.classroomId = id
 
+    // send noti to all teachers
+    this.notifyNewGradeReview(id, user)
+
     return this.gradeReviewRepository.create(gradeReviewRequestBody)
+  }
+
+  async notifyNewGradeReview(classroomId: string, user: User) {
+    const classroom = await this.classroomRepository.findById(classroomId)
+    const teachers = await this.userClassroomRepository.find({
+      where: {
+        classroomId: classroom.id,
+        userRole: ClassroomRole.TEACHER,
+      },
+    })
+    const notifications: Notification[] = []
+
+    for (const teacher of teachers) {
+      const notification = new Notification({
+        content: `Học sinh ${user.fullname} yêu cầu phúc khảo ở lớp ${classroom.name}`,
+        link: `/classrooms/${classroom.id}/grade-review`,
+        userId: teacher.userId,
+      })
+      notifications.push(notification)
+    }
+    // for host
+    const notification = new Notification({
+      content: `Học sinh ${user.fullname} yêu cầu phúc khảo ở lớp ${classroom.name}`,
+      link: `/classrooms/${classroom.id}/grade-review`,
+      userId: classroom.hostId,
+    })
+    notifications.push(notification)
+    this.notifyToTeachers(notifications)
+  }
+
+  async notifyToTeachers(notifications: Notification[]) {
+    const notificationsResponse = await this.notificationRepository.createAll(notifications)
+    for (const notification of notificationsResponse) {
+      await this.socketIoService.sendNotification(notification.userId, notification)
+    }
   }
 
   @get('/classrooms/{id}/grade-reviews')
@@ -172,7 +211,7 @@ export class GradeReviewController {
   @get('/classrooms/{classroomId}/grade-reviews/{gradeReviewId}')
   @intercept(CheckJoinClassroomInterceptor.BINDING_KEY)
   @response(200, {
-    description: 'Find all GradeReview model instances by classroom id',
+    description: 'Find one GradeReview model instance',
     content: {
       'application/json': {
         schema: getModelSchemaRef(GradeReview, { includeRelations: true }),
@@ -224,7 +263,7 @@ export class GradeReviewController {
   @response(200, {
     description: 'GradeReview FINALIZED success',
   })
-  async finalizeGrade(
+  async finalizeGradeReview(
     @param.path.string('classroomId') classroomId: string,
     @param.path.number('gradeReviewId') gradeReviewId: number,
     @requestBody({
@@ -276,31 +315,20 @@ export class GradeReviewController {
 
     gradeReview.status = GradeReviewStatus.FINAL
     grade.grade = finalGradeRequestBody.grade
+    await this.gradesRepository.save(grade)
 
-    // Send notifications to all students in class
-    const students = await this.userClassroomRepository.find({
+    // notify to student
+    const user = await this.userRepository.findOne({
       where: {
-        classroomId: classroom.id,
-        userRole: ClassroomRole.STUDENT,
+        studentId: gradeReview.studentId,
       },
     })
-    const notifications: Notification[] = []
-    for (const student of students) {
-      notifications.push(
-        new Notification({
-          content: `Lớp ${classroom.name} đã có điểm tổng kết`,
-          link: `/classrooms/${classroom.id}/tab-grade/`,
-          userId: student.id,
-        }),
-      )
+    if (user) {
+      const notification = await this.notificationRepository.create({
+        content: `Đơn phúc khảo cho thang điểm ${grade.grade} đã có bản chính thức.`,
+      })
+      this.socketIoService.sendNotification(user?.id as number, notification)
     }
-
-    const notificationsResponse = await this.notificationRepository.createAll(notifications)
-    for (const notification of notificationsResponse) {
-      // eslint-disable-next-line @typescript-eslint/no-floating-promises
-      this.socketIoService.sendMessage(notification.userId, notification.content)
-    }
-    await this.gradesRepository.save(grade)
     return this.gradeReviewRepository.save(gradeReview)
   }
 }

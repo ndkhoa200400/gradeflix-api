@@ -59,11 +59,6 @@ export class SocketIoService {
     return this.users.find(user => user.userId === userId) ?? null
   }
 
-  async sendMessage(userId: number, message: string) {
-    const getUser = this.getUser(userId)
-    this.io.to(getUser?.socketId).emit('message', message)
-  }
-
   async sendNotification(userId: number, notification: Notification): Promise<void> {
     const getUser = this.getUser(userId)
     this.io.to(getUser?.socketId).emit('notification', notification)
