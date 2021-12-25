@@ -40,7 +40,7 @@ export class SocketIoService {
         this.removeUser(socket.id)
       })
     })
-    console.log(`Socket listening on PORT ${process.env.SOCKET_PORT}`)
+    console.log(`Socket listening on PORT ${process.env.PORT ?? 3000}`)
   }
 
   public removeUser(socketId: string) {
