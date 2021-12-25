@@ -1,9 +1,10 @@
 /* eslint-disable @typescript-eslint/no-explicit-any */
 
 import { BindingScope, ContextTags, injectable } from '@loopback/core'
+import * as http from 'http'
 import { SOCKETIO_SERVICE } from '../keys'
 import { Notification } from '../models'
-
+import { Server } from 'socket.io'
 export interface OnlineUser {
   userId: number
 
@@ -12,12 +13,13 @@ export interface OnlineUser {
 
 @injectable({ scope: BindingScope.SINGLETON, tags: { [ContextTags.KEY]: SOCKETIO_SERVICE } })
 export class SocketIoService {
-  public io = require('socket.io')({
-    cors: { methods: '*', origin: '*', allowedHeaders: '*' },
-  })
+  public io: any
 
   public users: OnlineUser[] = []
-  constructor() {
+  constructor(httpServer: http.Server) {
+    this.io = new Server(httpServer, {
+      cors: { methods: '*', origin: '*', allowedHeaders: '*' },
+    })
     this.io.on('connection', (socket: any) => {
       console.log('New connection ' + socket.id)
       socket.on('message', async (message: string) => {
@@ -38,7 +40,6 @@ export class SocketIoService {
         this.removeUser(socket.id)
       })
     })
-    this.io.listen(process.env.SOCKET_PORT)
     console.log(`Socket listening on PORT ${process.env.SOCKET_PORT}`)
   }
 

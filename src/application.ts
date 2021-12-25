@@ -23,7 +23,6 @@ export class GradeflixApplication extends BootMixin(
 ) {
   constructor(options: ApplicationConfig = {}) {
     super(options)
-
     // Set up the custom sequence
     this.sequence(MySequence)
 
