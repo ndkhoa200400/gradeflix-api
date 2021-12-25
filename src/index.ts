@@ -32,14 +32,14 @@ export async function main(options: ApplicationConfig = {}) {
     .inScope(BindingScope.SINGLETON)
 
   const port = +(process.env.PORT ?? 3000)
-  const host = process.env.HOST ?? 'localhost'
+  const host = process.env.HOST
   httpServer.listen(
     {
       port: port,
       host: host,
     },
     () => {
-      const url = `${host}:${port}`
+      const url = `http://localhost:${port}`
       console.log(`Server is running at ${url}`)
       console.log(`Try ${url}/ping`)
     },
@@ -49,7 +49,7 @@ export async function main(options: ApplicationConfig = {}) {
 
 if (require.main === module) {
   // Run the application
-  const configApplication = {
+  const configApplication: ApplicationConfig = {
     rest: {
       port: +(process.env.PORT ?? 3000),
       host: process.env.HOST,
