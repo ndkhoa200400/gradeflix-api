@@ -7,6 +7,12 @@ export class PaginatedRequestDto {
   
   @property({ type: 'number' })
   pageSize: number
+  constructor(data?: Partial<PaginatedRequestDto>)
+  {
+    this.pageIndex = data?.pageIndex ?? 0
+    this.pageSize = data?.pageSize ?? 0
+
+  }
   
   @property({ type: 'number' })
   get skip(): number {

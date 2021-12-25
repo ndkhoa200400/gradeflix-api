@@ -1,5 +1,8 @@
+import { Filter, EntityCrudRepository } from '@loopback/repository'
 import { GradeStructure } from '../../models'
 import { UserRepository } from '../../repositories'
+import { PaginatedResponse, PaginatedRequestDto } from '../dtos'
+import { BaseEntity } from '../models/base-entity.model'
 
 async function checkUniqueStudentId(studentId: string, userRepository: UserRepository) {
   const countStudentExisted = await userRepository.count({
@@ -23,4 +26,28 @@ function validateGrade(grade: string, gradeStructure: GradeStructure) {
   return true
 }
 
-export { checkUniqueStudentId, validateGrade }
+async function findAll<T extends BaseEntity>(
+  filter: Filter<any>,
+  repository: EntityCrudRepository<T, number | string, T>,
+  pageSize?: number,
+  pageIndex?: number,
+) {
+  const count = await repository.count(filter.where)
+  const total = count.count
+  pageSize = pageSize ?? total
+  pageIndex = pageIndex ?? 1
+  if (total <= 0) {
+    return new PaginatedResponse<T>([], pageIndex, pageSize, total)
+  }
+
+  const paginated = new PaginatedRequestDto({
+    pageSize,
+    pageIndex,
+  })
+
+  filter.limit = pageSize
+  filter.skip = paginated.skip
+  const result = await repository.find(filter)
+  return new PaginatedResponse<T>(result, pageIndex, pageSize, total)
+}
+export { checkUniqueStudentId, validateGrade, findAll }

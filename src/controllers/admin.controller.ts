@@ -1,6 +1,15 @@
 import { authenticate } from '@loopback/authentication'
 import { inject, intercept } from '@loopback/core'
-import { Count, CountSchema, repository } from '@loopback/repository'
+import {
+  Count,
+  CountSchema,
+  Entity,
+  EntityCrudRepository,
+  Filter,
+  Model,
+  Repository,
+  repository,
+} from '@loopback/repository'
 import {
   post,
   param,
@@ -22,6 +31,9 @@ import {
 import { AuthenAdminRoleInterceptor } from '../interceptors/authen-admin-role.interceptor'
 import { ClassroomRole } from '../constants/role'
 import { SocketIoService } from '../services'
+import { PaginatedRequestDto, PaginatedResponse } from '../common/dtos'
+import { BaseEntity } from '../common/models/base-entity.model'
+import { findAll } from '../common/helpers'
 @authenticate('jwt')
 @intercept(AuthenAdminRoleInterceptor.BINDING_KEY)
 export class AdminController {
@@ -55,9 +67,12 @@ export class AdminController {
       },
     },
   })
-  async findClassrooms(): Promise<Classroom[]> {
-    const classrooms = await this.classroomRepository.find()
-    return classrooms
+  async findClassrooms(
+    @param.filter(Classroom) filter: Filter<Classroom>,
+    @param.query.number('pageSize') pageSize: number,
+    @param.query.number('pageIndex') pageIndex: number,
+  ): Promise<PaginatedResponse<Classroom>> {
+    return findAll(filter, this.classroomRepository, pageSize, pageIndex)
   }
 
   @get('admin/classrooms/count')
@@ -135,13 +150,29 @@ export class AdminController {
       },
     },
   })
-  async findUsersOfClassroom(@param.path.string('id') id: string): Promise<UserWithRole[]> {
+  async findUsersOfClassroom(
+    @param.path.string('id') id: string,
+    @param.query.number('pageSize') pageSize: number,
+    @param.query.number('pageIndex') pageIndex: number,
+  ): Promise<PaginatedResponse<UserWithRole>> {
+    const filter: Filter<UserWithRole> = {}
+    filter.where = { classroomId: id }
+    filter.include = ['user']
+    const count = await this.userClassroomRepository.count(filter.where)
+    const total = count.count + 1
+
+    pageSize = pageSize ?? total
+    pageIndex = pageIndex ?? 1
+    const paginated = new PaginatedRequestDto({
+      pageSize,
+      pageIndex,
+    })
+
+    filter.limit = pageSize
+    filter.skip = paginated.skip
     const classroom = await this.classroomRepository.findById(id)
 
-    const userClassrooms = await this.userClassroomRepository.find({
-      where: { classroomId: id },
-      include: ['user'],
-    })
+    const userClassrooms = await this.userClassroomRepository.find(filter)
 
     const usersInClassroom: UserWithRole[] = []
     const host = await this.userRepository.findById(classroom.hostId)
@@ -163,7 +194,7 @@ export class AdminController {
       usersInClassroom.push(temp)
     }
 
-    return usersInClassroom
+    return new PaginatedResponse<UserWithRole>(usersInClassroom, pageIndex, pageSize, total)
     // return classroom
   }
 
@@ -180,9 +211,12 @@ export class AdminController {
       },
     },
   })
-  async findUsers(): Promise<User[]> {
-    const users = await this.userRepository.find()
-    return users
+  async findUsers(
+    @param.query.number('pageSize') pageSize: number,
+    @param.query.number('pageIndex') pageIndex: number,
+  ): Promise<PaginatedResponse<User>> {
+    const filter: Filter<User> = {}
+    return findAll(filter, this.userRepository, pageSize, pageIndex)
   }
 
   @get('admin/users/count')
