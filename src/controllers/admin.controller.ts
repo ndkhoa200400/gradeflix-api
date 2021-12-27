@@ -3,11 +3,7 @@ import { inject, intercept } from '@loopback/core'
 import {
   Count,
   CountSchema,
-  Entity,
-  EntityCrudRepository,
   Filter,
-  Model,
-  Repository,
   repository,
 } from '@loopback/repository'
 import {
@@ -32,7 +28,6 @@ import { AuthenAdminRoleInterceptor } from '../interceptors/authen-admin-role.in
 import { ClassroomRole } from '../constants/role'
 import { SocketIoService } from '../services'
 import { PaginatedRequestDto, PaginatedResponse } from '../common/dtos'
-import { BaseEntity } from '../common/models/base-entity.model'
 import { findAll } from '../common/helpers'
 @authenticate('jwt')
 @intercept(AuthenAdminRoleInterceptor.BINDING_KEY)
@@ -72,6 +67,8 @@ export class AdminController {
     @param.query.number('pageSize') pageSize: number,
     @param.query.number('pageIndex') pageIndex: number,
   ): Promise<PaginatedResponse<Classroom>> {
+    filter = filter ?? {} as Filter<Classroom>
+
     return findAll(filter, this.classroomRepository, pageSize, pageIndex)
   }
 
