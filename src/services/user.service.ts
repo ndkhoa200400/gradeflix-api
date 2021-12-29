@@ -77,6 +77,20 @@ export class MyUserService implements UserService<User, LoginReq> {
     return token
   }
 
+  async resetPassword(userId: number, newPassword: string) {
+    const user = await this.userRepository.findById(userId)
+    if (!user.password)
+      throw new NoPermissionError('Bạn không thể đổi mật khẩu với tài khoản đăng nhập qua Google.')
+
+    user.password = await hash(newPassword, await genSalt())
+    await this.userRepository.save(user)
+
+    const userProfile = this.convertToUserProfile(user)
+    const token = await this.jwtService.generateToken(userProfile)
+
+    return token
+  }
+
   async verifyGoogleToken(token: string): Promise<LoginRes> {
     const payload = await verify(token)
     let user = await this.userRepository.findOne({

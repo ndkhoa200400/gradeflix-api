@@ -26,7 +26,7 @@ import {
   UserClassroomRepository,
   UserRepository,
 } from '../repositories'
-import { EmailManager, IEmailRequest, SocketIoService } from '../services'
+import { EmailManager, InvitationEmailRequest, SocketIoService } from '../services'
 import { UserProfile, SecurityBindings } from '@loopback/security'
 import { ClassroomRole } from '../constants/role'
 import { GetManyClassroomResponse, GetOneClassroomResponse, UserWithRole } from '../models/'
@@ -46,7 +46,8 @@ export class ClassroomController {
     public userRepository: UserRepository,
     @inject.getter(SecurityBindings.USER, { optional: true })
     private getCurrentUser: Getter<UserProfile>,
-    @inject(EmailManagerBindings.SEND_MAIL) public emailManager: EmailManager,
+    @inject(EmailManagerBindings.SEND_MAIL) 
+    public emailManager: EmailManager,
     @repository(StudentListRepository)
     public studentListRepository: StudentListRepository,
     @repository(GradesRepository)
@@ -430,7 +431,7 @@ export class ClassroomController {
     const hashToken = hashSha256(`${classroomId}|${role}|${user.email}`)
     if (token || role === ClassroomRole.TEACHER) {
       if (hashToken !== token) {
-        throw new HttpErrors['403'](
+        throw new HttpErrors['401'](
           'Lời mời không hợp lệ. Vui lòng liên hệ với giáo viên hoặc quản trị viên lớp học.',
         )
       }
@@ -489,7 +490,7 @@ export class ClassroomController {
       const webLink =
         process.env.WEB_LINK + `/invitation?classroomId=${classroomId}&role=${role}&token=${token}`
 
-      const emailData: IEmailRequest = {
+      const emailData: InvitationEmailRequest = {
         classroomName,
         from: 'gradeflix@gmail.com',
         invitee,
@@ -497,6 +498,7 @@ export class ClassroomController {
         to: email,
         subject,
         link: webLink,
+        template: './src/common/helpers/invitation-email.template.html',
       }
 
       // Catch error and keep sending other emails.

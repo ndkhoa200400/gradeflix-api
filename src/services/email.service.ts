@@ -14,12 +14,22 @@ export interface IEmailRequest {
   to?: string
   html?: string
   text?: string
-  classroomName?: string
-  invitee?: string
   role?: string
   subject?: string
   link?: string
+  template: string
 }
+
+export interface InvitationEmailRequest extends IEmailRequest {
+  classroomName?: string
+  role?: string
+  invitee?: string
+}
+
+export interface ResetPasswordEmailRequest extends IEmailRequest {
+  userName: string
+}
+
 
 export class EmailService {
   constructor() {}
@@ -38,7 +48,7 @@ export class EmailService {
     mailObj.to = data.to
     mailObj.subject = data.subject
 
-    const templatePath = `./src/common/helpers/email.template.html`
+    const templatePath = data.template
     const template = fs.readFileSync(templatePath, 'utf-8')
     const html = ejs.render(template, data)
 

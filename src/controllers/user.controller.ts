@@ -12,11 +12,19 @@ import {
   requestBody,
   response,
 } from '@loopback/rest'
-import { LoginReq, LoginRes, PatchUserRequest, UpdatePasswordRequest, User } from '../models'
-import { MyUserService } from '../services'
+import {
+  LoginReq,
+  LoginRes,
+  PatchUserRequest,
+  ResetPasswordRequest,
+  UpdatePasswordRequest,
+  User,
+} from '../models'
+import { EmailManager, MyUserService, ResetPasswordEmailRequest } from '../services'
 import { UserRepository } from '../repositories'
 import dayjs from 'dayjs'
-import { checkUniqueStudentId } from '../common/helpers'
+import { checkUniqueStudentId, hashSha256 } from '../common/helpers'
+import { EmailManagerBindings } from '../keys'
 
 export class UserController {
   constructor(
@@ -27,6 +35,8 @@ export class UserController {
     @repository(UserRepository) protected userRepository: UserRepository,
     @inject.getter(SecurityBindings.USER, { optional: true })
     private getCurrentUser: Getter<UserProfile>,
+    @inject(EmailManagerBindings.SEND_MAIL)
+    public emailManager: EmailManager,
   ) {}
 
   @post('/users/login')
@@ -191,5 +201,79 @@ export class UserController {
     const getUser = await this.getCurrentUser()
     const token = await this.userService.changePassword(getUser.id, passwordBody)
     return { token }
+  }
+
+  @post('/users/reset-password-request')
+  @response(204, {
+    description: 'User request reseting password',
+  })
+  async resetPasswordRequest(
+    @requestBody({
+      content: {
+        'application/json': {
+          schema: getModelSchemaRef(ResetPasswordRequest),
+        },
+      },
+    })
+    request: ResetPasswordRequest,
+  ): Promise<void> {
+    const user = await this.userRepository.findOne({
+      where: {
+        email: request.email,
+      },
+    })
+
+    if (!user) throw new HttpErrors['404']('Không tìm thấy người dùng này.')
+    const token = hashSha256(`${request.email}|${user.id}|${user.password}`)
+    const webLink = process.env.WEB_LINK + `/reset-password?token=${token}&email=${user.email}`
+    const emailData: ResetPasswordEmailRequest = {
+      subject: 'Đặt lại mật khẩu',
+      from: 'gradeflix@gmail.com',
+      to: user.email,
+      link: webLink,
+      template: './src/common/helpers/reset-password-email.template.html',
+      userName: user.fullname ?? user.email,
+    }
+    try {
+      await this.emailManager.sendMail(emailData)
+    } catch (error) {
+      console.log('error when sending invitation', error)
+      throw new HttpErrors['400']('Đã có lỗi xảy ra. Vui lòng thử lại')
+    }
+  }
+
+  @post('/users/reset-password')
+  @response(204, {
+    description: 'User reset password',
+  })
+  async resetPassword(
+    @requestBody({
+      content: {
+        'application/json': {
+          schema: getModelSchemaRef(ResetPasswordRequest),
+        },
+      },
+    })
+    request: ResetPasswordRequest,
+    @param.query.string('token') token: string,
+  ): Promise<LoginRes> {
+    const user = await this.userRepository.findOne({
+      where: {
+        email: request.email,
+      },
+    })
+
+    if (!user) throw new HttpErrors['404']('Không tìm thấy người dùng này.')
+    const hashed = hashSha256(`${request.email}|${user.id}|${user.password}`)
+
+    if (hashed !== token) {
+      throw new HttpErrors['401']('Yêu cầu không đúng. Vui lòng thử lại sau')
+    }
+    const jwtToken = await this.userService.resetPassword(user.id, request.newPassword as string)
+
+    return new LoginRes({
+      ...user,
+      token: jwtToken,
+    })
   }
 }
