@@ -20,7 +20,7 @@ import {
   UpdatePasswordRequest,
   User,
 } from '../models'
-import { EmailManager, MyUserService, ResetPasswordEmailRequest } from '../services'
+import { EmailManager, MyUserService, IEmailRequest } from '../services'
 import { UserRepository } from '../repositories'
 import dayjs from 'dayjs'
 import { checkUniqueStudentId, hashSha256 } from '../common/helpers'
@@ -78,6 +78,25 @@ export class UserController {
         throw new HttpErrors['400']('Ngày sinh không đúng định dạng!')
     }
     const user = await this.userService.register(userBody)
+
+    const token = hashSha256(`${user.email}|${user.id}`)
+
+    const webLink = process.env.WEB_LINK + `/activate?token=${token}&email=${user.email}`
+    const emailData: IEmailRequest = {
+      subject: 'Kích hoạt tài khoản',
+      from: 'gradeflix@gmail.com',
+      to: user.email,
+      link: webLink,
+      template: './src/common/helpers/activate-email.template.html',
+      userName: user.fullname ?? user.email,
+    }
+    try {
+      // eslint-disable-next-line @typescript-eslint/no-floating-promises
+      this.emailManager.sendMail(emailData)
+    } catch (error) {
+      console.log('error when sending invitation', error)
+      throw new HttpErrors['400']('Đã có lỗi xảy ra. Vui lòng thử lại')
+    }
     return user
   }
 
@@ -226,7 +245,7 @@ export class UserController {
     if (!user) throw new HttpErrors['404']('Không tìm thấy người dùng này.')
     const token = hashSha256(`${request.email}|${user.id}|${user.password}`)
     const webLink = process.env.WEB_LINK + `/reset-password?token=${token}&email=${user.email}`
-    const emailData: ResetPasswordEmailRequest = {
+    const emailData: IEmailRequest = {
       subject: 'Đặt lại mật khẩu',
       from: 'gradeflix@gmail.com',
       to: user.email,
@@ -275,5 +294,27 @@ export class UserController {
       ...user,
       token: jwtToken,
     })
+  }
+
+  @authenticate('jwt')
+  @post('/users/activate')
+  @response(200, {
+    description: 'Users activate their account',
+  })
+  async activateAccount(
+    @param.query.string('token') token: string,
+    @param.query.string('email') email: string,
+  ): Promise<User> {
+    const getUser = await this.getCurrentUser()
+    const user = await this.userRepository.findById(getUser.id)
+    if (user.email !== email) throw new HttpErrors['400']('Tài khoản không trùng khớp email.')
+    if (user.activated) throw new HttpErrors['403']('Tài khoản đã được kích hoạt.')
+    const hashed = hashSha256(`${user.email}|${user.id}`)
+
+    if (token !== hashed) {
+      throw new HttpErrors['401']('Yêu cầu không đúng. Vui lòng thử lại')
+    }
+    user.activated = true
+    return this.userRepository.save(user)
   }
 }

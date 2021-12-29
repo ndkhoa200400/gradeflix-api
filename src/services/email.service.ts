@@ -18,6 +18,7 @@ export interface IEmailRequest {
   subject?: string
   link?: string
   template: string
+  userName?: string
 }
 
 export interface InvitationEmailRequest extends IEmailRequest {
@@ -25,11 +26,6 @@ export interface InvitationEmailRequest extends IEmailRequest {
   role?: string
   invitee?: string
 }
-
-export interface ResetPasswordEmailRequest extends IEmailRequest {
-  userName: string
-}
-
 
 export class EmailService {
   constructor() {}

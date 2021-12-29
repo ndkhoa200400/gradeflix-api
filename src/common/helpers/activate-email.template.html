@@ -12,7 +12,7 @@
     }
     .content {
       text-align: left;
-      border: 1px solid gray;
+      border: 0.5px solid gray;
       margin-top: 1rem;
       border-radius: 0.3rem;
       overflow: hidden;
@@ -21,13 +21,14 @@
       margin-top: 1rem;
     }
     .header {
-      padding: 1rem;
+      padding: 0.5rem 1rem;
       background-color: green;
       color: white;
     }
     .content-body {
       padding: 2rem;
     }
+
     .button-container {
       text-align: center;
       margin: 1rem 0;
@@ -56,21 +57,19 @@
   <body>
     <div class="container">
       <h1>Gradeflix</h1>
-      <div class="">
-        <div class="content">
+     
+      <div class="content">
           <div class="header">
-            <b>Lời mời tham gia lớp học</b>
-            <div><%= classroomName %></div>
+            <h3>Kích hoạt tài khoản</h3>
           </div>
           <div class="content-body">
-            <div>
-              <b><%= invitee %></b> đã mời bạn tham gia lớp
-              <span style="color: green; font-weight: bold"><%= classroomName %></span> với tư cách
-              là <%= role %>
-            </div>
+            <h2>Xin chào <%= userName %>!</h2>
+
+            Xin vui lòng ấn vào link bên dưới để kích hoạt tài khoản
             <div class="button-container">
-              <a type="button" class="button" href="<%= link %>">Tham gia</a>
+              <a type="button" class="button" href="<%= link %>">Kích hoạt tài khoản</a>
             </div>
+            
           </div>
         </div>
       </div>

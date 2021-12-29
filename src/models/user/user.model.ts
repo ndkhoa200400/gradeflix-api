@@ -68,6 +68,13 @@ export class User extends TimeStampMixin(BaseEntity) {
   })
   active: boolean
 
+
+  @property({
+    type: 'boolean',
+    default: false
+  })
+  activated: boolean
+
   @property({
     type: 'string',
     default: UserRole.USER,

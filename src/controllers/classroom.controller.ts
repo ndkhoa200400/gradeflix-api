@@ -46,7 +46,7 @@ export class ClassroomController {
     public userRepository: UserRepository,
     @inject.getter(SecurityBindings.USER, { optional: true })
     private getCurrentUser: Getter<UserProfile>,
-    @inject(EmailManagerBindings.SEND_MAIL) 
+    @inject(EmailManagerBindings.SEND_MAIL)
     public emailManager: EmailManager,
     @repository(StudentListRepository)
     public studentListRepository: StudentListRepository,
