@@ -31,7 +31,7 @@ export class User extends TimeStampMixin(BaseEntity) {
 
   @property({
     type: 'string',
-    default: '01/01/1995'
+    default: '01/01/1995',
   })
   birthday: string
 
@@ -64,14 +64,13 @@ export class User extends TimeStampMixin(BaseEntity) {
 
   @property({
     type: 'boolean',
-    default: true
+    default: true,
   })
   active: boolean
 
-
   @property({
     type: 'boolean',
-    default: false
+    default: false,
   })
   activated: boolean
 
@@ -89,13 +88,7 @@ export class User extends TimeStampMixin(BaseEntity) {
       model: () => UserClassroom,
     },
   })
-  classrooms: Classroom[];
-
-  // Define well-known properties here
-
-  // Indexer property to allow additional data
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  [prop: string]: any
+  classrooms: Classroom[]
 
   constructor(data?: Partial<User>) {
     super(data)
@@ -122,6 +115,10 @@ export class LoginRes extends User {
     type: 'string',
   })
   token?: string
+
+  constructor(data?: Partial<LoginRes>) {
+    super(data)
+  }
 }
 export interface UserRelations {
   // describe navigational properties here

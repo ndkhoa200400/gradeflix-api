@@ -70,8 +70,8 @@ export class UserClassroomController {
       throw new NoPermissionError()
     }
 
-    // the student whose student id is changed
-    const student = await this.userRepository.count({
+    // Check if teachers has the right to change student's id in their classroom
+    const student = await this.userClassroomRepository.count({
       where: {
         userId: userId,
         classroomId: classroomId,
@@ -100,8 +100,7 @@ export class UserClassroomController {
       where: {
         code: code,
       },
-      include: ['host']
-
+      include: ['host'],
     })
     if (!classroom) throw new HttpErrors['404']('Không tìm thấy lớp học.')
     const isJoined = await this.userClassroomRepository.count({
@@ -115,7 +114,6 @@ export class UserClassroomController {
       classroomId: classroom.id,
       userId: getUser.id,
       userRole: ClassroomRole.STUDENT,
-
     })
 
     return classroom

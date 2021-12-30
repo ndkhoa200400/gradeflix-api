@@ -19,21 +19,21 @@ export class UserWithRole extends User {
 }
 
 @model()
-export class GetOneClassroomResponse extends Classroom {
+export class ClassroomWithUsersResponse extends Classroom {
   @property.array(UserWithRole)
   users: UserWithRole[]
 
-  constructor(data?: Partial<GetOneClassroomResponse>) {
+  constructor(data?: Partial<ClassroomWithUsersResponse>) {
     super(data)
   }
 }
 
 @model()
-export class GetManyClassroomResponse extends Classroom {
+export class ClassroomWithUserResponse extends Classroom {
   @property(UserWithRole)
   user: UserWithRole
 
-  constructor(data?: Partial<GetManyClassroomResponse>) {
+  constructor(data?: Partial<ClassroomWithUserResponse>) {
     super(data)
   }
 }

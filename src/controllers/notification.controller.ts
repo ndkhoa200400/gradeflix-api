@@ -144,6 +144,7 @@ export class NotificationController {
       where: {
         userId: getUser.id,
       },
+      order: ['createdAt DESC']
     })
     return notifications
   }

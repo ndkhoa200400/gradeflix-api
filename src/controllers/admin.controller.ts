@@ -1,11 +1,6 @@
 import { authenticate } from '@loopback/authentication'
 import { inject, intercept } from '@loopback/core'
-import {
-  Count,
-  CountSchema,
-  Filter,
-  repository,
-} from '@loopback/repository'
+import { Count, CountSchema, Filter, repository } from '@loopback/repository'
 import {
   post,
   param,
@@ -15,7 +10,14 @@ import {
   response,
   HttpErrors,
 } from '@loopback/rest'
-import { Classroom, GetOneClassroomResponse, Notification, User, UserWithRole } from '../models'
+import {
+  Classroom,
+  ClassroomWithUsersResponse,
+  Notification,
+  User,
+  UserClassroom,
+  UserWithRole,
+} from '../models'
 import {
   ClassroomRepository,
   GradesRepository,
@@ -25,7 +27,7 @@ import {
   UserRepository,
 } from '../repositories'
 import { AuthenAdminRoleInterceptor } from '../interceptors/authen-admin-role.interceptor'
-import { ClassroomRole } from '../constants/role'
+import { ClassroomRole, UserRole } from '../constants/role'
 import { SocketIoService } from '../services'
 import { PaginatedRequestDto, PaginatedResponse } from '../common/dtos'
 import { findAll } from '../common/helpers'
@@ -66,10 +68,37 @@ export class AdminController {
     @param.filter(Classroom) filter: Filter<Classroom>,
     @param.query.number('pageSize') pageSize: number,
     @param.query.number('pageIndex') pageIndex: number,
-  ): Promise<PaginatedResponse<Classroom>> {
-    filter = filter ?? {} as Filter<Classroom>
+  ): Promise<PaginatedResponse<ClassroomWithUsersResponse>> {
+    filter = filter ?? ({} as Filter<Classroom>)
+    const count = await this.classroomRepository.count(filter.where)
+    const total = count.count
+    pageSize = pageSize ?? total
+    pageIndex = pageIndex ?? 1
+    if (total <= 0) {
+      return new PaginatedResponse<ClassroomWithUsersResponse>([], pageIndex, pageSize, total)
+    }
 
-    return findAll(filter, this.classroomRepository, pageSize, pageIndex)
+    const paginated = new PaginatedRequestDto({
+      pageSize,
+      pageIndex,
+    })
+
+    filter.limit = pageSize
+    filter.skip = paginated.skip
+    const classrooms = await this.classroomRepository.find(filter)
+
+    const classroomsWithUsers: ClassroomWithUsersResponse[] = []
+    for (const classroom of classrooms) {
+      const temp = await this.getClassroomWithUsers(classroom)
+      classroomsWithUsers.push(temp)
+    }
+
+    return new PaginatedResponse<ClassroomWithUsersResponse>(
+      classroomsWithUsers,
+      pageIndex,
+      pageSize,
+      total,
+    )
   }
 
   @get('admin/classrooms/count')
@@ -96,14 +125,17 @@ export class AdminController {
       },
     },
   })
-  async findClassroomById(@param.path.string('id') id: string): Promise<Classroom> {
+  async findClassroomById(
+    @param.path.string('id') id: string,
+  ): Promise<ClassroomWithUsersResponse> {
     const classroom = await this.classroomRepository.findOne({
       where: {
         id: id,
       },
     })
+
     if (!classroom) throw new HttpErrors.NotFound(`Không tìm thấy lớp học ${id}.`)
-    return classroom
+    return this.getClassroomWithUsers(classroom)
   }
 
   @post('admin/classrooms/{id}')
@@ -143,7 +175,7 @@ export class AdminController {
     description: 'Classroom model instance',
     content: {
       'application/json': {
-        schema: getModelSchemaRef(GetOneClassroomResponse, { includeRelations: true }),
+        schema: getModelSchemaRef(ClassroomWithUsersResponse, { includeRelations: true }),
       },
     },
   })
@@ -152,7 +184,7 @@ export class AdminController {
     @param.query.number('pageSize') pageSize: number,
     @param.query.number('pageIndex') pageIndex: number,
   ): Promise<PaginatedResponse<UserWithRole>> {
-    const filter: Filter<UserWithRole> = {}
+    const filter: Filter<UserClassroom> = {}
     filter.where = { classroomId: id }
     filter.include = ['user']
     const count = await this.userClassroomRepository.count(filter.where)
@@ -260,7 +292,7 @@ export class AdminController {
     },
   })
   async updateUserById(
-    @param.path.string('id') id: string,
+    @param.path.number('id') id: number,
     @requestBody({
       content: {
         'application/json': {
@@ -290,6 +322,55 @@ export class AdminController {
     }
     Object.assign(user, userRequestBody)
     return this.userRepository.save(user)
+  }
+
+  @post('admin/accounts/')
+  @response(200, {
+    description: 'Update information of classroom',
+    content: {
+      'application/json': {
+        schema: getModelSchemaRef(User, {
+          includeRelations: true,
+          exclude: ['createdAt', 'updatedAt', 'activated', 'googleId', 'id', 'studentId', 'role'],
+        }),
+      },
+    },
+  })
+  async createAdminAccount(
+    @requestBody({
+      content: {
+        'application/json': {
+          schema: getModelSchemaRef(User, {
+            partial: true,
+          }),
+        },
+      },
+    })
+    userRequestBody: User,
+  ): Promise<User> {
+    userRequestBody.role = UserRole.ADMIN
+    userRequestBody.activated = true
+    return this.userRepository.create(userRequestBody)
+  }
+
+  @get('admin/accounts')
+  @response(200, {
+    description: 'Find all admin accounts',
+    content: {
+      'application/json': {
+        schema: getModelSchemaRef(User, { includeRelations: true }),
+      },
+    },
+  })
+  async getAdminAccounts(
+    @param.query.number('pageSize') pageSize: number,
+    @param.query.number('pageIndex') pageIndex: number,
+  ): Promise<PaginatedResponse<User>> {
+    const filter = {} as Filter<User>
+    filter.where = {
+      role: UserRole.ADMIN,
+    }
+    return findAll(filter, this.userRepository, pageSize, pageIndex)
   }
 
   // Notification
@@ -329,5 +410,40 @@ export class AdminController {
     this.socketIoService.sendNotification(user.id, notification)
 
     return notification
+  }
+
+  async getClassroomWithUsers(classroom: Classroom): Promise<ClassroomWithUsersResponse> {
+    const userClassrooms = await this.userClassroomRepository.find({
+      include: ['user'],
+      where: {
+        classroomId: classroom.id,
+      },
+    })
+
+    const users: UserWithRole[] = []
+
+    for (const userClassroom of userClassrooms) {
+      const user = userClassroom.user
+      const role = userClassroom.userRole
+
+      const temp = new UserWithRole({
+        ...user,
+        userRole: role,
+      })
+      users.push(temp)
+    }
+
+    const host = await this.userRepository.findById(classroom.hostId)
+
+    users.push(
+      new UserWithRole({
+        ...host,
+        userRole: ClassroomRole.HOST,
+      }),
+    )
+    return new ClassroomWithUsersResponse({
+      ...classroom,
+      users: users,
+    })
   }
 }

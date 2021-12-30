@@ -29,7 +29,7 @@ import {
 import { EmailManager, InvitationEmailRequest, SocketIoService } from '../services'
 import { UserProfile, SecurityBindings } from '@loopback/security'
 import { ClassroomRole } from '../constants/role'
-import { GetManyClassroomResponse, GetOneClassroomResponse, UserWithRole } from '../models/'
+import { ClassroomWithUserResponse, ClassroomWithUsersResponse, UserWithRole } from '../models/'
 import { EmailManagerBindings } from '../keys'
 import { hashSha256 } from '../common/helpers'
 import { nanoid } from 'nanoid'
@@ -104,14 +104,14 @@ export class ClassroomController {
       'application/json': {
         schema: {
           type: 'array',
-          items: getModelSchemaRef(GetManyClassroomResponse, { includeRelations: true }),
+          items: getModelSchemaRef(ClassroomWithUserResponse, { includeRelations: true }),
         },
       },
     },
   })
   async find(
     @param.filter(Classroom) filter: Filter<Classroom>,
-  ): Promise<GetManyClassroomResponse[]> {
+  ): Promise<ClassroomWithUserResponse[]> {
     filter = filter ?? {}
     const currentUser = await this.getCurrentUser()
     const user = await this.userRepository.findById(currentUser.id)
@@ -123,11 +123,11 @@ export class ClassroomController {
     filter.where = { ...filter.where, hostId: user.id }
     const hostedClassrooms = await this.classroomRepository.find(filter)
 
-    const result: GetManyClassroomResponse[] = []
+    const result: ClassroomWithUserResponse[] = []
 
     // find classrooms that current user is the host
     for (const hostedClassroom of hostedClassrooms) {
-      const temp = new GetManyClassroomResponse({
+      const temp = new ClassroomWithUserResponse({
         ...hostedClassroom,
         user: user,
       })
@@ -136,7 +136,7 @@ export class ClassroomController {
 
     // find classrooms that user has joined
     for (const userClassroom of userClassrooms) {
-      const temp = new GetManyClassroomResponse({
+      const temp = new ClassroomWithUserResponse({
         ...userClassroom.classroom,
         user: new UserWithRole({
           ...user,
@@ -162,7 +162,7 @@ export class ClassroomController {
   async findById(
     @param.path.string('id') id: string,
     @param.filter(Classroom, { exclude: 'where' }) filter?: FilterExcludingWhere<Classroom>,
-  ): Promise<GetManyClassroomResponse> {
+  ): Promise<ClassroomWithUserResponse> {
     filter = filter ?? ({} as FilterExcludingWhere<Classroom>)
     const getUser = await this.getCurrentUser()
 
@@ -174,7 +174,7 @@ export class ClassroomController {
 
     const currentUser = await this.userRepository.findById(getUser.id)
 
-    return new GetManyClassroomResponse({
+    return new ClassroomWithUserResponse({
       ...classroom,
       user: new UserWithRole({
         ...currentUser,
@@ -190,7 +190,7 @@ export class ClassroomController {
     description: 'Classroom model instance',
     content: {
       'application/json': {
-        schema: getModelSchemaRef(GetOneClassroomResponse, { includeRelations: true }),
+        schema: getModelSchemaRef(ClassroomWithUsersResponse, { includeRelations: true }),
       },
     },
   })
