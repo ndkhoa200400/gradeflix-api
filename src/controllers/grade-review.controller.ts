@@ -81,7 +81,11 @@ export class GradeReviewController {
     gradeReviewRequestBody: Omit<GradeReview, 'id'>,
   ): Promise<GradeReview> {
     const getUser = await this.getCurrentUser()
-
+    const isValid = await this.checkValidGradeToGradeStructure(
+      id,
+      gradeReviewRequestBody.expectedGrade,
+    )
+    if (!isValid) throw new HttpErrors.BadRequest('Điểm không hợp lệ với thang điểm của lớp.')
     const user = await this.userRepository.findById(getUser.id)
     if (!user.studentId) throw new StudentIdRequiredError()
 
@@ -96,8 +100,8 @@ export class GradeReviewController {
       for (const gradeReview of gradeReviews) {
         if (gradeReview.currentGrade.name === gradeReviewRequestBody.expectedGrade.name) {
           if (gradeReview.status === GradeReviewStatus.FINAL)
-            throw new HttpErrors['400']('Bạn không thể phúc khảo. Thang điểm đã là điểm cuối cùng.')
-          return gradeReview
+            Object.assign(gradeReview, gradeReviewRequestBody)
+          return this.gradeReviewRepository.save(gradeReview)
         }
       }
     }
@@ -330,5 +334,27 @@ export class GradeReviewController {
       this.socketIoService.sendNotification(user?.id as number, notification)
     }
     return this.gradeReviewRepository.save(gradeReview)
+  }
+
+  /**
+   * Check if grade is valid to grade structure of classroom
+   * Throw error when classroom hasn't has grade structure yet
+   * @returns boolean - true if valid, false if invalid
+   */
+  async checkValidGradeToGradeStructure(classroomId: string, grade: Grade) {
+    const classroom = await this.classroomRepository.findById(classroomId)
+
+    if (!classroom.gradeStructure)
+      throw new HttpErrors['400']('Lớp chưa có thang điểm. Vui lòng liên hệ giáo viên để thêm')
+
+    const numberGrade = Number(grade.grade)
+    if (
+      Number.isNaN(numberGrade) ||
+      Number(classroom.gradeStructure.total) < numberGrade ||
+      numberGrade < 0
+    )
+      return false
+
+    return true
   }
 }
