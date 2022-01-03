@@ -13,7 +13,7 @@ export default async function (app: GradeflixApplication) {
     if (!user) {
       const password = await hash(row.password?.toString() as string, await genSalt())
 
-      await users.create({ ...row, password: password })
+      await users.create({ ...row, password: password, activated: true })
     }
   })
 }

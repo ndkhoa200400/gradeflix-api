@@ -14,12 +14,7 @@ import {
   HttpErrors,
   getModelSchemaRef,
 } from '@loopback/rest'
-import {
-  Grades,
-  StudentList,
-  StudentListResponse,
-  UploadFileResponse,
-} from '../models'
+import { Grades, StudentList, StudentListResponse, UploadFileResponse } from '../models'
 import {
   ClassroomRepository,
   GradesRepository,
@@ -79,13 +74,19 @@ export class StudentListController {
     filter.where = { ...filter.where, classroomId: classroomId }
     const studentList = await this.studentListRepository.find(filter)
     const studentListResponse: StudentListResponse[] = []
+    const userClassrooms = await this.userClassroomRepository.find({
+      where: {
+        classroomId: classroomId,
+      },
+    })
+    const userIds = userClassrooms.map(item => item.userId)
     for (const student of studentList) {
       const user = await this.userRepository.findOne({
         where: {
           studentId: student.studentId,
+          id: { inq: userIds },
         },
       })
-
       const temp: StudentListResponse = new StudentListResponse({
         ...student,
         user: user,
@@ -248,7 +249,11 @@ export class StudentListController {
     const gradeStructure = classroom.gradeStructure
     if (!gradeStructure) throw new HttpErrors['400'](`Vui lòng thêm cấu trúc điểm cho lớp học.`)
 
-    if (!gradeStructure.gradeCompositions.find(gradeComposition => gradeComposition.name === gradeName))
+    if (
+      !gradeStructure.gradeCompositions.find(
+        gradeComposition => gradeComposition.name === gradeName,
+      )
+    )
       throw new HttpErrors['400'](`Lớp học không có thang điểm ${gradeName}.`)
 
     const grade = await this.gradesRepository.findOne({
@@ -349,7 +354,9 @@ export class StudentListController {
     const gradeStructure = classroom.gradeStructure
     if (!gradeStructure) throw new HttpErrors['400']('Vui lòng thêm cấu trúc điểm cho lớp học.')
 
-    const scale = gradeStructure.gradeCompositions.find(gradeComposition => gradeComposition.name === gradeName)
+    const scale = gradeStructure.gradeCompositions.find(
+      gradeComposition => gradeComposition.name === gradeName,
+    )
     if (!scale) throw new HttpErrors['400'](`Thang điểm ${gradeName} không tồn tại.`)
 
     // Validate whether classroom has a student list or not
