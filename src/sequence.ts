@@ -59,7 +59,7 @@ export class MySequence implements SequenceHandler {
 
       if (authorization) {
         token = authorization.split('Bearer ')[1]
-        if (token) {
+        if (token && token !== 'undefined') {
           const userProfile = await this.jwtService.verifyToken(token)
           const user = await this.userRepository.findOne({
             where: {

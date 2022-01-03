@@ -57,7 +57,6 @@ export class CheckJoinClassroomInterceptor implements Provider<Interceptor> {
       // Add pre-invocation logic here
       const  id  = invocationCtx.args[0]  // classroomid is the first arg from invocationCtx
       const getUser = await this.getCurrentUser()
-      const result = await next()
 
       const classroom = await this.classroomRepository.findOne({
         where: {
@@ -75,6 +74,8 @@ export class CheckJoinClassroomInterceptor implements Provider<Interceptor> {
       if (classroom.hostId !== getUser.id && !isJoined) {
         throw new NoPermissionError()
       }
+      const result = await next()
+
       // Add post-invocation logic here
       return result
     } catch (err) {

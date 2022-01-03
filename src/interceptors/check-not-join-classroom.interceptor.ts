@@ -56,7 +56,6 @@ export class CheckNotJoinClassroomInterceptor implements Provider<Interceptor> {
       // Add pre-invocation logic here
       const  id  = invocationCtx.args[0]  // classroomid is the first arg from invocationCtx
       const getUser = await this.getCurrentUser()
-      const result = await next()
 
       const classroom = await this.classroomRepository.findOne({
         where: {
@@ -74,6 +73,8 @@ export class CheckNotJoinClassroomInterceptor implements Provider<Interceptor> {
       if (isJoined.count) {
         throw new HttpErrors['400']('Bạn đã tham gia lớp học.')
       }
+      const result = await next()
+
       // Add post-invocation logic here
       return result
     } catch (err) {
