@@ -1,4 +1,4 @@
-import { inject } from '@loopback/context'
+import { Getter, inject } from '@loopback/context'
 import {
   AuthenticateFn,
   AuthenticationBindings,
@@ -7,6 +7,7 @@ import {
 } from '@loopback/authentication'
 import {
   FindRoute,
+  HttpErrors,
   InvokeMethod,
   InvokeMiddleware,
   ParseParams,
@@ -16,6 +17,10 @@ import {
   Send,
   SequenceHandler,
 } from '@loopback/rest'
+import { repository } from '@loopback/repository'
+import { UserRepository } from './repositories'
+import { SecurityBindings, UserProfile } from '@loopback/security'
+import { TokenServiceBindings, JWTService } from '@loopback/authentication-jwt'
 
 const SequenceActions = RestBindings.SequenceActions
 
@@ -35,6 +40,12 @@ export class MySequence implements SequenceHandler {
     @inject(SequenceActions.REJECT) public reject: Reject,
     @inject(AuthenticationBindings.AUTH_ACTION)
     protected authenticateRequest: AuthenticateFn,
+    @repository(UserRepository)
+    public userRepository: UserRepository,
+    @inject.getter(SecurityBindings.USER, { optional: true })
+    private getCurrentUser: Getter<UserProfile>,
+    @inject(TokenServiceBindings.TOKEN_SERVICE)
+    public jwtService: JWTService,
   ) {}
 
   async handle(context: RequestContext) {
@@ -42,12 +53,36 @@ export class MySequence implements SequenceHandler {
       const { request, response } = context
       const finished = await this.invokeMiddleware(context)
       if (finished) return
+
+      let token
+      const { authorization } = request.headers
+
+      if (authorization) {
+        token = authorization.split('Bearer ')[1]
+        if (token) {
+          const userProfile = await this.jwtService.verifyToken(token)
+          const user = await this.userRepository.findOne({
+            where: {
+              id: userProfile.id,
+            },
+          })
+          if (user && !user.active) {
+            throw new HttpErrors['403'](
+              'Tài khoản của bạn đã bị khóa. Liên hệ với quản trị viên để biết thêm thông tin.',
+            )
+          }
+        }
+      }
+
       const route = this.findRoute(request)
       await this.authenticateRequest(request)
       const args = await this.parseParams(request, route)
       const result = await this.invoke(route, args)
+
       this.send(response, result)
-    } catch (err) {
+    } catch (error) {
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      const err = error as unknown as any
       console.log(err)
       if (
         err.code === AUTHENTICATION_STRATEGY_NOT_FOUND ||
@@ -56,8 +91,7 @@ export class MySequence implements SequenceHandler {
       ) {
         Object.assign(err, { statusCode: 401 /* Unauthorized */ })
       }
-      if (err.code ==="23505")
-      {
+      if (err.code === '23505') {
         Object.assign(err, { statusCode: 400 /* Unauthorized */ })
       }
       this.reject(context, err as Error)
