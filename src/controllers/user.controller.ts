@@ -210,7 +210,7 @@ export class UserController {
     const user = await this.userRepository.findById(getUser.id)
 
     if (userBody.studentId) {
-      const isUnique = await checkUniqueStudentId(userBody.studentId, this.userRepository)
+      const isUnique = await checkUniqueStudentId(user, userBody.studentId, this.userRepository)
 
       if (!isUnique) throw new HttpErrors['400']('Mã số sinh viên đã tồn tại')
     }

@@ -81,7 +81,7 @@ export class UserClassroomController {
     if (!student.count) throw new HttpErrors.NotFound('Không tìm thấy sinh viên trong lớp học này.')
     const user = await this.userRepository.findById(userId)
 
-    const isStudentIdUnique = await checkUniqueStudentId(body.studentId, this.userRepository)
+    const isStudentIdUnique = await checkUniqueStudentId(user, body.studentId, this.userRepository)
 
     if (!isStudentIdUnique) throw new HttpErrors['400']('Mã số sinh viên đã tồn tại!')
 

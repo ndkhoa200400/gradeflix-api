@@ -1,12 +1,13 @@
 import { Filter, EntityCrudRepository } from '@loopback/repository'
-import { GradeStructure } from '../../models'
+import { GradeStructure, User } from '../../models'
 import { UserRepository } from '../../repositories'
 import { PaginatedResponse, PaginatedRequestDto } from '../dtos'
 import { BaseEntity } from '../models/base-entity.model'
 
-async function checkUniqueStudentId(studentId: string, userRepository: UserRepository) {
+async function checkUniqueStudentId(user: User, studentId: string, userRepository: UserRepository) {
   const countStudentExisted = await userRepository.count({
     studentId: studentId,
+    id: { neq: user.id },
   })
 
   return countStudentExisted.count === 0
