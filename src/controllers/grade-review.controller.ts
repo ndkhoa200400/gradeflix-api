@@ -203,12 +203,15 @@ export class GradeReviewController {
           classroomId: id,
           studentId: user.studentId,
         },
+        include: ['user'],
+        order: ['createdAt DESC'],
       })
     }
     return this.gradeReviewRepository.find({
       where: {
         classroomId: id,
       },
+      include: ['user'],
     })
   }
 
@@ -233,6 +236,7 @@ export class GradeReviewController {
         id: gradeReviewId,
         classroomId: classroomId,
       },
+      include: ['user'],
     })
     if (!gradeReview) throw new HttpErrors['404']('Không tìm thấy yêu cầu.')
 
@@ -244,13 +248,16 @@ export class GradeReviewController {
       include: ['user', 'classroom'],
     })) as UserClassroom & UserClassroomRelations
 
+    // If teacher => get all reviews of the classroom
     if (
       userClassroom.userRole === ClassroomRole.TEACHER ||
       userClassroom.classroom.hostId === getUser.id
     ) {
       if (gradeReview.status === GradeReviewStatus.PENDING) {
         gradeReview.status = GradeReviewStatus.PROCESSING
-        await this.gradeReviewRepository.save(gradeReview)
+        await this.gradeReviewRepository.updateById(gradeReview.id, {
+          status: GradeReviewStatus.PROCESSING,
+        })
       }
     } else {
       const user: User = userClassroom.user

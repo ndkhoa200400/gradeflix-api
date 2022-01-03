@@ -1,7 +1,7 @@
 /* eslint-disable @typescript-eslint/naming-convention */
 import { belongsTo, hasMany, Model, model, property } from '@loopback/repository'
 import { CommentOnReview } from '.'
-import { Classroom } from '..'
+import { Classroom, User } from '..'
 import { BaseEntity } from '../../common/models/base-entity.model'
 import { GradeReviewStatus } from '../../constants/status'
 import { TimeStampMixin } from '../../mixins'
@@ -43,9 +43,7 @@ export class GradeReview extends TimeStampMixin(BaseEntity) {
   @belongsTo(() => Classroom)
   classroomId: string
 
-  @property({
-    type: 'string',
-  })
+  @belongsTo(()=>User, {keyTo: 'studentId', name:'user', keyFrom: 'studentId'})
   studentId: string
 
   @property({
@@ -91,6 +89,7 @@ export class GradeReview extends TimeStampMixin(BaseEntity) {
 export interface GradeReviewRelations {
   // describe navigational properties here
   comments: CommentOnReview[]
+  user?: User
 }
 
 export type GradeReviewWithRelations = GradeReview & GradeReviewRelations
