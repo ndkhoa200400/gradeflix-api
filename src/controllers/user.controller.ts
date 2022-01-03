@@ -79,6 +79,25 @@ export class UserController {
     }
     const user = await this.userService.register(userBody)
 
+    // eslint-disable-next-line @typescript-eslint/no-floating-promises
+    this.sendActivationLink(user)
+    return user
+  }
+
+  @authenticate('jwt')
+  @get('/users/activation-request')
+  @response(200, {
+    description: 'Users request activation link',
+  })
+  async requestActivationLink(): Promise<void> {
+    const getUser = await this.getCurrentUser()
+
+    const user = await this.userRepository.findById(getUser.id)
+    // eslint-disable-next-line @typescript-eslint/no-floating-promises
+    this.sendActivationLink(user)
+  }
+
+  async sendActivationLink(user: User) {
     const token = hashSha256(`${user.email}|${user.id}`)
 
     const webLink = process.env.WEB_LINK + `/activate?token=${token}&email=${user.email}`
@@ -91,13 +110,11 @@ export class UserController {
       userName: user.fullname ?? user.email,
     }
     try {
-      // eslint-disable-next-line @typescript-eslint/no-floating-promises
-      this.emailManager.sendMail(emailData)
+      await this.emailManager.sendMail(emailData)
     } catch (error) {
       console.log('error when sending invitation', error)
       throw new HttpErrors['400']('Đã có lỗi xảy ra. Vui lòng thử lại')
     }
-    return user
   }
 
   @authenticate('jwt')
