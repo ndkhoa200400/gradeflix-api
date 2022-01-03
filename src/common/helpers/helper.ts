@@ -27,7 +27,7 @@ function validateGrade(grade: string, gradeStructure: GradeStructure) {
 }
 
 async function findAll<T extends BaseEntity>(
-  filter: Filter<any>,
+  filter: Filter<T>,
   repository: EntityCrudRepository<T, number | string, T>,
   pageSize?: number,
   pageIndex?: number,

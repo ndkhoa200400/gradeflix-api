@@ -133,14 +133,15 @@ export class GradeReviewController {
     })
     gradeReviewRequestBody.studentId = user.studentId
     gradeReviewRequestBody.classroomId = id
+    const gradeReview = await this.gradeReviewRepository.create(gradeReviewRequestBody)
 
     // send noti to all teachers
-    this.notifyNewGradeReview(id, user)
+    this.notifyNewGradeReview(id, user, gradeReview)
 
-    return this.gradeReviewRepository.create(gradeReviewRequestBody)
+    return gradeReview
   }
 
-  async notifyNewGradeReview(classroomId: string, user: User) {
+  async notifyNewGradeReview(classroomId: string, user: User, gradeReview: GradeReview) {
     const classroom = await this.classroomRepository.findById(classroomId)
     const teachers = await this.userClassroomRepository.find({
       where: {
@@ -153,7 +154,7 @@ export class GradeReviewController {
     for (const teacher of teachers) {
       const notification = new Notification({
         content: `Học sinh ${user.fullname} yêu cầu phúc khảo ở lớp ${classroom.name}`,
-        link: `/classrooms/${classroom.id}/grade-review`,
+        link: `/classrooms/${classroom.id}/grade-review/${gradeReview.id}`,
         userId: teacher.userId,
       })
       notifications.push(notification)
@@ -212,6 +213,7 @@ export class GradeReviewController {
         classroomId: id,
       },
       include: ['user'],
+      order: ['createdAt DESC'],
     })
   }
 
@@ -337,6 +339,8 @@ export class GradeReviewController {
     if (user) {
       const notification = await this.notificationRepository.create({
         content: `Đơn phúc khảo cho thang điểm ${grade.grade} đã có bản chính thức.`,
+        link: `classrooms/${classroomId}/grade-review/${gradeReview.id}`,
+        userId: user.id,
       })
       this.socketIoService.sendNotification(user?.id as number, notification)
     }
