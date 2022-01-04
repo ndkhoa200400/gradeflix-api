@@ -188,15 +188,15 @@ export class GradeReviewController {
   })
   async findByClassroom(@param.path.string('id') id: string): Promise<GradeReview[]> {
     const getUser = await this.getCurrentUser()
-
+    const classroom = await this.classroomRepository.findById(id)
     const userClassroom = await this.userClassroomRepository.findOne({
       where: {
         userId: getUser.id,
         classroomId: id,
       },
     })
-    if (!userClassroom) return []
-    if (userClassroom.userRole === ClassroomRole.STUDENT) {
+    if (!userClassroom && classroom.hostId !== getUser.id) return []
+    if (userClassroom?.userRole === ClassroomRole.STUDENT) {
       const user = await this.userRepository.findById(getUser.id)
       if (!user.studentId) throw new StudentIdRequiredError()
       return this.gradeReviewRepository.find({
