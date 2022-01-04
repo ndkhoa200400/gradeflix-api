@@ -92,7 +92,7 @@ export class CommentOnReviewController {
     if (!student)
       throw new HttpErrors['404'](`Không tìm thấy sinh viên với mã số ${gradeReview.studentId}.`)
     const currentUser = await this.userRepository.findById(getUser.id)
-    if (getUser.id !== student) {
+    if (getUser.id !== student.id) {
       this.notifyNewCommentToStudent(classroomId, currentUser.fullname, gradeReviewId, student)
     } else {
       this.notifyNewCommentToTeachers(classroomId, student)
