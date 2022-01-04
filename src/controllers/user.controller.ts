@@ -25,6 +25,8 @@ import { UserRepository } from '../repositories'
 import dayjs from 'dayjs'
 import { checkUniqueStudentId, hashSha256 } from '../common/helpers'
 import { EmailManagerBindings } from '../keys'
+import { UserRole } from '../constants/role'
+import { NoPermissionError } from '../common/error-hanlder'
 
 export class UserController {
   constructor(
@@ -77,6 +79,8 @@ export class UserController {
       if (!dayjs(userBody.birthday).isValid())
         throw new HttpErrors['400']('Ngày sinh không đúng định dạng!')
     }
+    if (userBody.role === UserRole.ADMIN)
+      throw new NoPermissionError('Không thể tạo tài khoản admin')
     const user = await this.userService.register(userBody)
 
     // eslint-disable-next-line @typescript-eslint/no-floating-promises

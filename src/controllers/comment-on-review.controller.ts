@@ -268,15 +268,17 @@ export class CommentOnReviewController {
         classroomId: classroomId,
         userId: userId,
       },
-      include: ['user', 'classroom'],
+      include: ['user'],
     })
-    if (!userClassroom) throw new HttpErrors['404']('Không tìm thấy sinh viên.')
-    if (!userClassroom?.user.studentId) throw new StudentIdRequiredError()
+    const classroom = await this.classroomRepository.findById(classroomId)
+    if (!userClassroom && classroom.hostId !== userId)
+      throw new HttpErrors['404']('Không tìm thấy sinh viên.')
+    if (userClassroom && !userClassroom.user.studentId) throw new StudentIdRequiredError()
 
     if (
-      gradeReview.studentId !== userClassroom.user.studentId &&
-      userClassroom.classroom.hostId !== userId &&
-      userClassroom.userRole !== ClassroomRole.TEACHER
+      classroom.hostId !== userId &&
+      gradeReview.studentId !== userClassroom?.user.studentId &&
+      userClassroom?.userRole !== ClassroomRole.TEACHER
     ) {
       throw new NoPermissionError()
     }

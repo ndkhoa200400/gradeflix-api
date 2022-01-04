@@ -11,7 +11,6 @@ import { securityId, UserProfile } from '@loopback/security'
 import { genSalt, hash } from 'bcryptjs'
 import { verify } from '../common/helpers'
 import { NoPermissionError } from '../common/error-hanlder'
-import { UserRole } from '../constants/role'
 export class MyUserService implements UserService<User, LoginReq> {
   constructor(
     @repository(UserRepository)
@@ -51,9 +50,6 @@ export class MyUserService implements UserService<User, LoginReq> {
 
   async register(userData: User) {
     userData.password = await hash(userData.password, await genSalt())
-    if (userData.role === UserRole.ADMIN) {
-      throw new NoPermissionError('Không thể tạo tài khoản Admin.')
-    }
     const user = await this.userRepository.create(userData)
     const userProfile = this.convertToUserProfile(user)
     const token = await this.jwtService.generateToken(userProfile)

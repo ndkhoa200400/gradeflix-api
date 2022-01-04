@@ -28,9 +28,10 @@ import {
 } from '../repositories'
 import { AuthenAdminRoleInterceptor } from '../interceptors/authen-admin-role.interceptor'
 import { ClassroomRole, UserRole } from '../constants/role'
-import { SocketIoService } from '../services'
+import { MyUserService, SocketIoService } from '../services'
 import { PaginatedRequestDto, PaginatedResponse } from '../common/dtos'
 import { findAll } from '../common/helpers'
+import { UserServiceBindings } from '@loopback/authentication-jwt'
 @authenticate('jwt')
 @intercept(AuthenAdminRoleInterceptor.BINDING_KEY)
 export class AdminController {
@@ -49,6 +50,8 @@ export class AdminController {
     public notificationRepository: NotificationRepository,
     @inject('services.socketio')
     public socketIoService: SocketIoService,
+    @inject(UserServiceBindings.USER_SERVICE)
+    public userService: MyUserService,
   ) {}
 
   // Classroom management
@@ -243,8 +246,9 @@ export class AdminController {
   async findUsers(
     @param.query.number('pageSize') pageSize: number,
     @param.query.number('pageIndex') pageIndex: number,
+    @param.filter(User) filter: Filter<User>,
   ): Promise<PaginatedResponse<User>> {
-    const filter: Filter<User> = {}
+    filter = filter ?? {}
     return findAll(filter, this.userRepository, pageSize, pageIndex)
   }
 
@@ -350,7 +354,8 @@ export class AdminController {
   ): Promise<User> {
     userRequestBody.role = UserRole.ADMIN
     userRequestBody.activated = true
-    return this.userRepository.create(userRequestBody)
+    const user = await this.userService.register(userRequestBody)
+    return user
   }
 
   @get('admin/accounts')
@@ -365,9 +370,11 @@ export class AdminController {
   async getAdminAccounts(
     @param.query.number('pageSize') pageSize: number,
     @param.query.number('pageIndex') pageIndex: number,
+    @param.filter(User) filter: Filter<User>,
   ): Promise<PaginatedResponse<User>> {
-    const filter = {} as Filter<User>
+    filter = filter ?? {}
     filter.where = {
+      ...filter,
       role: UserRole.ADMIN,
     }
     return findAll(filter, this.userRepository, pageSize, pageIndex)
