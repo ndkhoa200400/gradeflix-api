@@ -247,14 +247,12 @@ export class GradeReviewController {
         classroomId: classroomId,
         userId: getUser.id,
       },
-      include: ['user', 'classroom'],
+      include: ['user'],
     })) as UserClassroom & UserClassroomRelations
 
+    const classroom = await this.classroomRepository.findById(classroomId)
     // If teacher => get all reviews of the classroom
-    if (
-      userClassroom.userRole === ClassroomRole.TEACHER ||
-      userClassroom.classroom.hostId === getUser.id
-    ) {
+    if (classroom.hostId === getUser.id || userClassroom.userRole === ClassroomRole.TEACHER) {
       if (gradeReview.status === GradeReviewStatus.PENDING) {
         gradeReview.status = GradeReviewStatus.PROCESSING
         await this.gradeReviewRepository.updateById(gradeReview.id, {
