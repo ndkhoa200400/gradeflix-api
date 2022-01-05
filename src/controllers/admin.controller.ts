@@ -170,6 +170,27 @@ export class AdminController {
     })
     if (!classroom) throw new HttpErrors.NotFound(`Không tìm thấy lớp học ${id}.`)
     Object.assign(classroom, classroomRequestBody)
+    if (classroomRequestBody.active === false) {
+      const userClassrooms = await this.userClassroomRepository.find({
+        where: {
+          classroomId: classroom.id,
+        },
+      })
+      const userIds = userClassrooms.map(item => item.userId)
+      userIds.push(classroom.hostId)
+      const notifications: Notification[] = []
+      for (const userId of userIds) {
+        notifications.push(
+          new Notification({
+            content: `Lớp ${classroom.name} đã bị khóa`,
+            link: '/',
+            userId: userId,
+          }),
+        )
+      }
+      await this.notificationRepository.createAll(notifications)
+      await this.socketIoService.lockClassroom(userIds, notifications, classroom.id)
+    }
     return this.classroomRepository.save(classroom)
   }
 
@@ -325,6 +346,9 @@ export class AdminController {
       }
     }
     Object.assign(user, userRequestBody)
+    if (userRequestBody.active === false) {
+      await this.socketIoService.lockAccount(user.id)
+    }
     return this.userRepository.save(user)
   }
 

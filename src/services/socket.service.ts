@@ -1,3 +1,4 @@
+/* eslint-disable @typescript-eslint/no-floating-promises */
 /* eslint-disable @typescript-eslint/no-explicit-any */
 
 import { BindingScope, ContextTags, injectable } from '@loopback/core'
@@ -70,5 +71,22 @@ export class SocketIoService {
       const getUser = this.getUser(userId)
       this.io.to(getUser?.socketId).emit('notification', notification)
     }
+  }
+
+  /**
+   * When admin locks classroom => kick users and noti
+   */
+  async lockClassroom(userIds: number[], notifications: Notification[], classroomId: string) {
+    for (let i = 0; i < userIds.length; i++) {
+      const userId = userIds[i]
+      const getUser = this.getUser(userId)
+      this.io.to(getUser?.socketId).emit('classroomLocked', classroomId)
+      this.sendNotification(userId, notifications[i])
+    }
+  }
+
+  async lockAccount(userId: number) {
+    const getUser = this.getUser(userId)
+    this.io.to(getUser?.socketId).emit('accountLocked')
   }
 }

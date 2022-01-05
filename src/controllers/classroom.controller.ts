@@ -136,6 +136,7 @@ export class ClassroomController {
 
     // find classrooms that user has joined
     for (const userClassroom of userClassrooms) {
+      if (!userClassroom.classroom) continue
       const temp = new ClassroomWithUserResponse({
         ...userClassroom.classroom,
         user: new UserWithRole({

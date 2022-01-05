@@ -55,9 +55,8 @@ export class AuthenRoleClassroomInterceptor implements Provider<Interceptor> {
   async intercept(invocationCtx: InvocationContext, next: () => ValueOrPromise<InvocationResult>) {
     try {
       // Add pre-invocation logic here
-      const  id  = invocationCtx.args[0]  // classroomid is the first arg from invocationCtx
+      const id = invocationCtx.args[0] // classroomid is the first arg from invocationCtx
       const getUser = await this.getCurrentUser()
-    
 
       const classroom = await this.classroomRepository.findOne({
         where: {
@@ -65,7 +64,7 @@ export class AuthenRoleClassroomInterceptor implements Provider<Interceptor> {
         },
       })
       if (!classroom) throw new HttpErrors['404']('Không tìm thấy lớp học.')
-
+      if (!classroom.active) throw new HttpErrors['400']('Lớp học đã bị khóa.')
       const isTeacher = await this.userClassroomRepository.findOne({
         where: {
           userId: getUser.id,
