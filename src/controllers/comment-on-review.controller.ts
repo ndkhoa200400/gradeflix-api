@@ -95,7 +95,7 @@ export class CommentOnReviewController {
     if (getUser.id !== student.id) {
       this.notifyNewCommentToStudent(classroomId, currentUser.fullname, gradeReviewId, student)
     } else {
-      this.notifyNewCommentToTeachers(classroomId, student)
+      this.notifyNewCommentToTeachers(classroomId, student, gradeReviewId)
     }
     return this.commentOnReviewRepository.create({
       ...commentOnReviewRequestBody,
@@ -121,7 +121,7 @@ export class CommentOnReviewController {
 
     this.socketIoService.sendNotification(student.id, notification)
   }
-  async notifyNewCommentToTeachers(classroomId: string, student: User) {
+  async notifyNewCommentToTeachers(classroomId: string, student: User, gradeReviewId: number) {
     const classroom = await this.classroomRepository.findById(classroomId)
 
     const teachers = await this.userClassroomRepository.find({
@@ -135,7 +135,7 @@ export class CommentOnReviewController {
     for (const teacher of teachers) {
       const notification = new Notification({
         content: `Học sinh ${student.fullname} đã bình luận vào đơn phúc khảo ở lớp ${classroom.name}`,
-        link: `/classrooms/${classroom.id}/grade-review`,
+        link: `/classrooms/${classroom.id}/grade-review/${gradeReviewId}`,
         userId: teacher.userId,
       })
       notifications.push(notification)
@@ -143,7 +143,7 @@ export class CommentOnReviewController {
     // for host
     const notificationForhost = new Notification({
       content: `Học sinh ${student.fullname} yêu cầu phúc khảo ở lớp ${classroom.name}`,
-      link: `/classrooms/${classroom.id}/grade-review`,
+      link: `/classrooms/${classroom.id}/grade-review/${gradeReviewId}`,
       userId: classroom.hostId,
     })
     notifications.push(notificationForhost)
