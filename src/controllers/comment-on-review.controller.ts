@@ -273,7 +273,12 @@ export class CommentOnReviewController {
     const classroom = await this.classroomRepository.findById(classroomId)
     if (!userClassroom && classroom.hostId !== userId)
       throw new HttpErrors['404']('Không tìm thấy sinh viên.')
-    if (userClassroom && !userClassroom.user.studentId) throw new StudentIdRequiredError()
+    if (
+      userClassroom &&
+      userClassroom.userRole === ClassroomRole.STUDENT &&
+      !userClassroom.user.studentId
+    )
+      throw new StudentIdRequiredError()
 
     if (
       classroom.hostId !== userId &&
