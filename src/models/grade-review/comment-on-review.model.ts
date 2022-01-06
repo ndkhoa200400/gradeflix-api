@@ -41,6 +41,7 @@ export class CommentOnReview extends TimeStampMixin(BaseEntity) {
 
 export interface CommentOnReviewRelations {
   // describe navigational properties here
+  user?: User
 }
 
 export type CommentOnReviewWithRelations = CommentOnReview & CommentOnReviewRelations

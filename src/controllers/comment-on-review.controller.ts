@@ -13,6 +13,7 @@ import {
 import {
   Classroom,
   CommentOnReview,
+  CommentOnReviewWithRelations,
   Notification,
   User,
   UserClassroomWithRelations,
@@ -103,11 +104,13 @@ export class CommentOnReviewController {
     } else {
       this.notifyNewCommentToTeachers(classroomId, student, gradeReviewId)
     }
-    return this.commentOnReviewRepository.create({
+    const comment: CommentOnReviewWithRelations = await this.commentOnReviewRepository.create({
       ...commentOnReviewRequestBody,
       userId: getUser.id,
       gradeReviewId: gradeReviewId,
     })
+    comment.user = currentUser
+    return comment
   }
 
   async notifyNewCommentToStudent(
