@@ -1,6 +1,6 @@
 /* eslint-disable @typescript-eslint/no-floating-promises */
 import { inject, intercept } from '@loopback/core'
-import { Getter, repository } from '@loopback/repository'
+import { Filter, Getter, repository } from '@loopback/repository'
 import {
   post,
   param,
@@ -186,7 +186,11 @@ export class GradeReviewController {
       },
     },
   })
-  async findByClassroom(@param.path.string('id') id: string): Promise<GradeReview[]> {
+  async findByClassroom(
+    @param.path.string('id') id: string,
+    @param.filter(GradeReview) filter?: Filter<GradeReview>,
+  ): Promise<GradeReview[]> {
+    filter = filter ?? {}
     const getUser = await this.getCurrentUser()
     const classroom = await this.classroomRepository.findById(id)
     const userClassroom = await this.userClassroomRepository.findOne({
@@ -208,13 +212,11 @@ export class GradeReviewController {
         order: ['createdAt DESC'],
       })
     }
-    return this.gradeReviewRepository.find({
-      where: {
-        classroomId: id,
-      },
-      include: ['user'],
-      order: ['createdAt DESC'],
-    })
+
+    filter.include = [...(filter.include ?? []), 'user']
+    filter.where = { ...filter.where, classroomId: id }
+    filter.order = ['createdAt DESC']
+    return this.gradeReviewRepository.find(filter)
   }
 
   @get('/classrooms/{classroomId}/grade-reviews/{gradeReviewId}')
@@ -230,16 +232,13 @@ export class GradeReviewController {
   async getGradeReview(
     @param.path.string('classroomId') classroomId: string,
     @param.path.number('gradeReviewId') gradeReviewId: number,
+    @param.filter(GradeReview) filter?: Filter<GradeReview>,
   ): Promise<GradeReview | null> {
+    filter = filter ?? {}
     const getUser = await this.getCurrentUser()
-
-    const gradeReview = await this.gradeReviewRepository.findOne({
-      where: {
-        id: gradeReviewId,
-        classroomId: classroomId,
-      },
-      include: ['user'],
-    })
+    filter.include = [...(filter.include ?? []), 'user']
+    filter.where = { ...filter.where, classroomId: classroomId, id: gradeReviewId }
+    const gradeReview = await this.gradeReviewRepository.findOne(filter)
     if (!gradeReview) throw new HttpErrors['404']('Không tìm thấy yêu cầu.')
 
     const userClassroom = (await this.userClassroomRepository.findOne({
