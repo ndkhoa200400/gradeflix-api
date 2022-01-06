@@ -123,7 +123,7 @@ export class CommentOnReviewController {
     const notification = await this.notificationRepository.create(
       new Notification({
         content: `Giáo viên ${teacherName} đã bình luận vào đơn phúc khảo ở lớp ${classroom.name}.`,
-        link: `/classrooms/${classroom.id}/grade-review/${gradeReviewId}`,
+        link: `/classrooms/${classroom.id}/tab-review-grade/${gradeReviewId}`,
         userId: student.id,
       }),
     )
@@ -144,7 +144,7 @@ export class CommentOnReviewController {
     for (const teacher of teachers) {
       const notification = new Notification({
         content: `Học sinh ${student.fullname} đã bình luận vào đơn phúc khảo ở lớp ${classroom.name}`,
-        link: `/classrooms/${classroom.id}/grade-review/${gradeReviewId}`,
+        link: `/classrooms/${classroom.id}/tab-review-grade/${gradeReviewId}`,
         userId: teacher.userId,
       })
       notifications.push(notification)
@@ -152,7 +152,7 @@ export class CommentOnReviewController {
     // for host
     const notificationForhost = new Notification({
       content: `Học sinh ${student.fullname} yêu cầu phúc khảo ở lớp ${classroom.name}`,
-      link: `/classrooms/${classroom.id}/grade-review/${gradeReviewId}`,
+      link: `/classrooms/${classroom.id}/tab-review-grade/${gradeReviewId}`,
       userId: classroom.hostId,
     })
     notifications.push(notificationForhost)
@@ -280,13 +280,13 @@ export class CommentOnReviewController {
       },
     })
     const classroom = await this.classroomRepository.findById(classroomId)
-    const user = await this.userClassroomRepository.findById(userId)
+    const user = await this.userRepository.findById(userId)
     if (!userClassroom && classroom.hostId !== userId)
       throw new HttpErrors['404']('Không tìm thấy sinh viên.')
     if (
       userClassroom &&
       userClassroom.userRole === ClassroomRole.STUDENT &&
-      !userClassroom.user.studentId
+      !user.studentId
     )
       throw new StudentIdRequiredError()
 

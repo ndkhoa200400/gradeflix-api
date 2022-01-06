@@ -154,7 +154,7 @@ export class GradeReviewController {
     for (const teacher of teachers) {
       const notification = new Notification({
         content: `Học sinh ${user.fullname} yêu cầu phúc khảo ở lớp ${classroom.name}`,
-        link: `/classrooms/${classroom.id}/grade-review/${gradeReview.id}`,
+        link: `/classrooms/${classroom.id}/tab-review-grade/${gradeReview.id}`,
         userId: teacher.userId,
       })
       notifications.push(notification)
@@ -162,7 +162,7 @@ export class GradeReviewController {
     // for host
     const notification = new Notification({
       content: `Học sinh ${user.fullname} yêu cầu phúc khảo ở lớp ${classroom.name}`,
-      link: `/classrooms/${classroom.id}/grade-review`,
+      link: `/classrooms/${classroom.id}/tab-review-grade/${gradeReview.id}`,
       userId: classroom.hostId,
     })
     notifications.push(notification)
@@ -336,7 +336,7 @@ export class GradeReviewController {
     if (user) {
       const notification = await this.notificationRepository.create({
         content: `Đơn phúc khảo cho thang điểm ${grade.grade} đã có bản chính thức.`,
-        link: `classrooms/${classroomId}/grade-review/${gradeReview.id}`,
+        link: `classrooms/${classroomId}/tab-review-grade/${gradeReview.id}`,
         userId: user.id,
       })
       this.socketIoService.sendNotification(user?.id as number, notification)
