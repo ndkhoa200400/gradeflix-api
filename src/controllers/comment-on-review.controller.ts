@@ -219,11 +219,10 @@ export class CommentOnReviewController {
         classroomId: classroomId,
         userId: getUser.id,
       },
-      include: ['classroom', 'user'],
     })) as UserClassroomWithRelations
 
-    const classroom: Classroom = userClassroom.classroom
-
+    const classroom: Classroom = await this.classroomRepository.findById(classroomId)
+    const user = await this.userRepository.findById(getUser.id)
     const gradeReview = await this.gradeReviewRepository.findOne({
       where: {
         id: gradeReviewId,
@@ -235,7 +234,7 @@ export class CommentOnReviewController {
     if (
       classroom.hostId === getUser.id ||
       userClassroom.userRole === ClassroomRole.TEACHER ||
-      gradeReview.studentId === userClassroom.user.studentId
+      gradeReview.studentId === user.studentId
     ) {
       return this.commentOnReviewRepository.find({
         where: {
@@ -276,9 +275,9 @@ export class CommentOnReviewController {
         classroomId: classroomId,
         userId: userId,
       },
-      include: ['user'],
     })
     const classroom = await this.classroomRepository.findById(classroomId)
+    const user = await this.userClassroomRepository.findById(userId)
     if (!userClassroom && classroom.hostId !== userId)
       throw new HttpErrors['404']('Không tìm thấy sinh viên.')
     if (
@@ -290,7 +289,7 @@ export class CommentOnReviewController {
 
     if (
       classroom.hostId !== userId &&
-      gradeReview.studentId !== userClassroom?.user.studentId &&
+      gradeReview.studentId !== user.studentId &&
       userClassroom?.userRole !== ClassroomRole.TEACHER
     ) {
       throw new NoPermissionError()
