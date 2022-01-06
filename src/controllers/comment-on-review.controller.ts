@@ -10,7 +10,13 @@ import {
   response,
   HttpErrors,
 } from '@loopback/rest'
-import { Classroom, CommentOnReview, Notification, User } from '../models'
+import {
+  Classroom,
+  CommentOnReview,
+  Notification,
+  User,
+  UserClassroomWithRelations,
+} from '../models'
 import {
   ClassroomRepository,
   CommentOnReviewRepository,
@@ -206,14 +212,16 @@ export class CommentOnReviewController {
   ): Promise<CommentOnReview[]> {
     const getUser = await this.getCurrentUser()
 
-    const userClassroom = await this.userClassroomRepository.findOne({
+    await this.validateGradeReviewRole(gradeReviewId, classroomId, getUser.id)
+
+    const userClassroom = (await this.userClassroomRepository.findOne({
       where: {
         classroomId: classroomId,
         userId: getUser.id,
       },
       include: ['classroom', 'user'],
-    })
-    if (!userClassroom) return []
+    })) as UserClassroomWithRelations
+
     const classroom: Classroom = userClassroom.classroom
 
     const gradeReview = await this.gradeReviewRepository.findOne({
