@@ -1,0 +1,30 @@
+version: "3.6"
+
+services:
+  gradeflix_api:
+    build:
+      context: .
+      dockerfile: ./Dockerfile
+    image: gradeflix_api
+    container_name: gradeflix_api
+    env_file:
+      - .env
+    ports:
+      - 4003:3003
+    environment:
+      - POSTGRES_HOST=postgres
+      - POSTGRES_PORT=5432
+      - POSTGRES_USER=postgres
+      - POSTGRES_DB=gradeflix
+      - POSTGRES_PASSWORD=200400
+  postgres:
+    image: postgres:10
+    container_name: postgres
+    volumes:
+      - /tmp/postgres:/tmp/postgres
+    environment:
+      - POSTGRES_USER=postgres
+      - POSTGTES_PASSWORD=200400
+      - POSTGRES_DB=gradeflix
+      - POSTGRES_HOST_AUTH_METHOD=trust
+    restart: always
