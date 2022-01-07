@@ -20,6 +20,7 @@ import {
 import { Classroom, GradeStructure, Notification, SendInvitationRequest } from '../models'
 import {
   ClassroomRepository,
+  GradeReviewRepository,
   GradesRepository,
   NotificationRepository,
   StudentListRepository,
@@ -36,6 +37,7 @@ import { nanoid } from 'nanoid'
 import { AuthenRoleClassroomInterceptor } from '../interceptors/authen-role-classroom.interceptor'
 import { CheckJoinClassroomInterceptor } from '../interceptors/'
 import calculateTotal from '../common/helpers/calculate-grade-total'
+import { GradeReviewStatus } from '../constants/status'
 export class ClassroomController {
   constructor(
     @repository(ClassroomRepository)
@@ -56,6 +58,8 @@ export class ClassroomController {
     public notificationRepository: NotificationRepository,
     @inject('services.socketio')
     public socketIoService: SocketIoService,
+    @repository(GradeReviewRepository)
+    public gradeReviewRepository: GradeReviewRepository,
   ) {}
 
   @authenticate('jwt')
@@ -267,11 +271,13 @@ export class ClassroomController {
       // check if new grade composition is marked as final
       // then notify to students
       if (classroom.gradeStructure) {
+        // find current grade composition matching with the request body from the classroom
         const currentGradeComposition = classroom.gradeStructure.gradeCompositions.find(item => {
           if (item.name === gradeComposition.name) {
             return item
           }
         })
+        // if grade composition is marked final
         if (currentGradeComposition) {
           if (gradeComposition.isFinal === true && currentGradeComposition.isFinal === false) {
             // Send notifications to all students in class
@@ -287,6 +293,33 @@ export class ClassroomController {
             }
             // eslint-disable-next-line @typescript-eslint/no-floating-promises
             this.notifyToStudents(notifications)
+          }
+          // if grade copmosition is unmarked from final
+          // then mark all the grade reviews of this grade composition final
+          if (gradeComposition.isFinal === false && currentGradeComposition.isFinal === true) {
+            // find all grade reviews from this classroom
+            const gradeReviews = await this.gradeReviewRepository.find({
+              where: {
+                classroomId: classroom.id,
+              },
+            })
+
+            // filter grade reviews that belongs to the current grade composition
+            const matchedGradeReviewIds = []
+            for (const gradeReview of gradeReviews) {
+              if (gradeReview.currentGrade.name === gradeComposition.name) {
+                matchedGradeReviewIds.push(gradeReview.id)
+              }
+            }
+
+            await this.gradeReviewRepository.updateAll(
+              {
+                status: GradeReviewStatus.FINAL,
+              },
+              {
+                id: { inq: matchedGradeReviewIds },
+              },
+            )
           }
         }
       }
