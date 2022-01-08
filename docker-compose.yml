@@ -10,16 +10,17 @@ services:
     env_file:
       - .env
     ports:
-      - 4003:3003
+      - 3003:3003
     environment:
-      - POSTGRES_HOST=postgres
+      - POSTGRES_HOST=my_postgres
       - POSTGRES_PORT=5432
       - POSTGRES_USER=postgres
       - POSTGRES_DB=gradeflix
       - POSTGRES_PASSWORD=200400
-  postgres:
+    
+  my_postgres:
     image: postgres:10
-    container_name: postgres
+    container_name: my_postgres
     volumes:
       - /tmp/postgres:/tmp/postgres
     environment:
