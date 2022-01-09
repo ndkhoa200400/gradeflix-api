@@ -98,7 +98,7 @@ export class UserController {
 
     const user = await this.userRepository.findById(getUser.id)
     // eslint-disable-next-line @typescript-eslint/no-floating-promises
-    this.sendActivationLink(user)
+    await this.sendActivationLink(user)
   }
 
   async sendActivationLink(user: User) {

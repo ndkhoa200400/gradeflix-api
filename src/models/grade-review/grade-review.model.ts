@@ -43,7 +43,7 @@ export class GradeReview extends TimeStampMixin(BaseEntity) {
   @belongsTo(() => Classroom)
   classroomId: string
 
-  @belongsTo(()=>User, {keyTo: 'studentId', name:'user', keyFrom: 'studentId'})
+  @belongsTo(() => User, { keyTo: 'studentId', name: 'user', keyFrom: 'studentId' })
   studentId: string
 
   @property({
@@ -79,7 +79,6 @@ export class GradeReview extends TimeStampMixin(BaseEntity) {
 
   @hasMany(() => CommentOnReview)
   comments: CommentOnReview[]
-  
 
   constructor(data?: Partial<GradeReview>) {
     super(data)
