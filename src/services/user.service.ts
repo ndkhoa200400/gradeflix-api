@@ -104,6 +104,7 @@ export class MyUserService implements UserService<User, LoginReq> {
     } else {
       if (!user.googleId) {
         user.googleId = payload.sub
+        user.activated = true
         user = await this.userRepository.save(user)
       }
     }
