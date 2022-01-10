@@ -98,11 +98,27 @@ export class CommentOnReviewController {
     })
     if (!student)
       throw new HttpErrors['404'](`Không tìm thấy sinh viên với mã số ${gradeReview.studentId}.`)
+
     const currentUser = await this.userRepository.findById(getUser.id)
+
+    const classroom = await this.classroomRepository.findById(classroomId)
+
+    // find user role for current user
+    const userClassroom = await this.userClassroomRepository.findOne({
+      where: {
+        userId: currentUser.id,
+        classroomId: classroom.id,
+      },
+    })
     if (getUser.id !== student.id) {
       this.notifyNewCommentToStudent(classroomId, currentUser.fullname, gradeReviewId, student)
+    }
+    if (userClassroom?.userRole === ClassroomRole.STUDENT) {
+      const content = `Học sinh ${student.fullname} đã bình luận vào đơn phúc khảo ở lớp ${classroom.name}`
+      this.notifyNewCommentToTeachers(classroomId, student, gradeReviewId, content)
     } else {
-      this.notifyNewCommentToTeachers(classroomId, student, gradeReviewId)
+      const content = `Giáo viên ${currentUser.fullname} đã bình luận vào đơn phúc khảo ở lớp ${classroom.name}`
+      this.notifyNewCommentToTeachers(classroomId, currentUser, gradeReviewId, content)
     }
     const comment: CommentOnReviewWithRelations = await this.commentOnReviewRepository.create({
       ...commentOnReviewRequestBody,
@@ -128,9 +144,14 @@ export class CommentOnReviewController {
       }),
     )
 
-    this.socketIoService.sendNotification(student.id, notification)
+    await this.socketIoService.sendNotification(student.id, notification)
   }
-  async notifyNewCommentToTeachers(classroomId: string, student: User, gradeReviewId: number) {
+  async notifyNewCommentToTeachers(
+    classroomId: string,
+    user: User,
+    gradeReviewId: number,
+    content: string,
+  ) {
     const classroom = await this.classroomRepository.findById(classroomId)
 
     const teachers = await this.userClassroomRepository.find({
@@ -142,20 +163,25 @@ export class CommentOnReviewController {
     const notifications: Notification[] = []
 
     for (const teacher of teachers) {
+      if (teacher.userId === user.id) {
+        continue
+      }
       const notification = new Notification({
-        content: `Học sinh ${student.fullname} đã bình luận vào đơn phúc khảo ở lớp ${classroom.name}`,
+        content: content,
         link: `/classrooms/${classroom.id}/tab-review-grade/${gradeReviewId}`,
         userId: teacher.userId,
       })
       notifications.push(notification)
     }
-    // for host
-    const notificationForhost = new Notification({
-      content: `Học sinh ${student.fullname} yêu cầu phúc khảo ở lớp ${classroom.name}`,
-      link: `/classrooms/${classroom.id}/tab-review-grade/${gradeReviewId}`,
-      userId: classroom.hostId,
-    })
-    notifications.push(notificationForhost)
+    if (user.id !== classroom.hostId) {
+      // for host
+      const notificationForhost = new Notification({
+        content: content,
+        link: `/classrooms/${classroom.id}/tab-review-grade/${gradeReviewId}`,
+        userId: classroom.hostId,
+      })
+      notifications.push(notificationForhost)
+    }
     const notificationsResponse = await this.notificationRepository.createAll(notifications)
     for (const notification of notificationsResponse) {
       await this.socketIoService.sendNotification(notification.userId, notification)
@@ -283,11 +309,7 @@ export class CommentOnReviewController {
     const user = await this.userRepository.findById(userId)
     if (!userClassroom && classroom.hostId !== userId)
       throw new HttpErrors['404']('Không tìm thấy sinh viên.')
-    if (
-      userClassroom &&
-      userClassroom.userRole === ClassroomRole.STUDENT &&
-      !user.studentId
-    )
+    if (userClassroom && userClassroom.userRole === ClassroomRole.STUDENT && !user.studentId)
       throw new StudentIdRequiredError()
 
     if (

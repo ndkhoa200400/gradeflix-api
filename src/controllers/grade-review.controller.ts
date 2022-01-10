@@ -339,7 +339,7 @@ export class GradeReviewController {
         link: `classrooms/${classroomId}/tab-review-grade/${gradeReview.id}`,
         userId: user.id,
       })
-      this.socketIoService.sendNotification(user?.id as number, notification)
+      await this.socketIoService.sendNotification(user?.id as number, notification)
     }
     return this.gradeReviewRepository.save(gradeReview)
   }

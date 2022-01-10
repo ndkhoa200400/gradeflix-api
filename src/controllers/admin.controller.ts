@@ -437,8 +437,7 @@ export class AdminController {
       ...notificationRequestBody,
       userId: user.id,
     })
-    // eslint-disable-next-line @typescript-eslint/no-floating-promises
-    this.socketIoService.sendNotification(user.id, notification)
+    await this.socketIoService.sendNotification(user.id, notification)
 
     return notification
   }

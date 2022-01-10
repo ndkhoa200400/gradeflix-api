@@ -81,7 +81,7 @@ export class SocketIoService {
       const userId = userIds[i]
       const getUser = this.getUser(userId)
       this.io.to(getUser?.socketId).emit('classroomLocked', classroomId)
-      this.sendNotification(userId, notifications[i])
+      await this.sendNotification(userId, notifications[i])
     }
   }
 

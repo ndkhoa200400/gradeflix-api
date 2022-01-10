@@ -72,7 +72,7 @@ export class NotificationController {
 
     const notification = await this.notificationRepository.create(notificationRequestBody)
 
-    this.socketIoService.sendNotification(user.id, notification)
+    await this.socketIoService.sendNotification(user.id, notification)
     return notification
   }
 
@@ -144,7 +144,7 @@ export class NotificationController {
       where: {
         userId: getUser.id,
       },
-      order: ['createdAt DESC']
+      order: ['createdAt DESC'],
     })
     return notifications
   }
