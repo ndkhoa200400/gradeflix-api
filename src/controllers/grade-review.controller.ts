@@ -336,7 +336,7 @@ export class GradeReviewController {
     if (user) {
       const notification = await this.notificationRepository.create({
         content: `Đơn phúc khảo cho thang điểm ${grade.grade} đã có bản chính thức.`,
-        link: `classrooms/${classroomId}/tab-review-grade/${gradeReview.id}`,
+        link: `/classrooms/${classroomId}/tab-review-grade/${gradeReview.id}`,
         userId: user.id,
       })
       await this.socketIoService.sendNotification(user?.id as number, notification)
