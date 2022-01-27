@@ -24,6 +24,8 @@ import {
 import { UserProfile, SecurityBindings } from '@loopback/security'
 import { authenticate } from '@loopback/authentication'
 import { SocketIoService } from '../services'
+import { findAll } from '../common/helpers'
+import { PaginatedResponse } from '../common/dtos'
 
 @authenticate('jwt')
 export class NotificationController {
@@ -88,12 +90,16 @@ export class NotificationController {
       },
     },
   })
-  async find(@param.filter(Notification) filter: Filter<Notification>): Promise<Notification[]> {
+  async find(
+    @param.query.number('pageSize') pageSize: number,
+    @param.query.number('pageIndex') pageIndex: number,
+    @param.filter(Notification) filter: Filter<Notification>,
+  ): Promise<PaginatedResponse<Notification>> {
     filter = filter ?? {}
     const getUser = await this.getCurrentUser()
     filter.where = { ...filter.where, userId: getUser.id }
     filter.order = ['createdAt DESC']
-    return this.notificationRepository.find(filter)
+    return findAll(filter, this.notificationRepository, pageSize, pageIndex)
   }
 
   @get('/notifications/{id}/mark-read')
@@ -121,7 +127,7 @@ export class NotificationController {
   }
 
   @get('/notifications/mark-all-read')
-  @response(200, {
+  @response(204, {
     description: 'Mark notification read',
     content: {
       'application/json': {
@@ -129,7 +135,7 @@ export class NotificationController {
       },
     },
   })
-  async markAllAsRead(): Promise<Notification[]> {
+  async markAllAsRead(): Promise<void> {
     const getUser = await this.getCurrentUser()
 
     await this.notificationRepository.updateAll(
@@ -140,12 +146,5 @@ export class NotificationController {
         userId: getUser.id,
       },
     )
-    const notifications = await this.notificationRepository.find({
-      where: {
-        userId: getUser.id,
-      },
-      order: ['createdAt DESC'],
-    })
-    return notifications
   }
 }
